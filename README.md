@@ -1,1 +1,3 @@
-# wesad
+In this project, we hope to explore and quanitfy the ability for advanced chest sensors and watch sensors to detect stress in their wearers. We hope to accomplish this by creating a logsitic regression model where the response is either amusement (our baseline) or stress.
+
+Some of the co-variates we intend to explore are skin and body temperature, blood volume pulse, electrodermal activity, electromyography activity, and respiration. More details on these co-variates can be found in this README: https://sakai.duke.edu/access/content/group/e5248fc7-f1dd-4cdb-a810-1432395057b6/Case%20Study%202%3A%20Detecting%20Stress/wesad_readme.pdf
