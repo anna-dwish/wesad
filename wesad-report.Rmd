@@ -39,7 +39,22 @@ ggplot2::theme_set(new = theme_bw())
 
 # Introduction
 
+In the past few years, the use of wearables have exploded [[1]][Bibliography]. With it, researchers around the globe are exploring how tracking health information via wearables, such as a person’s heart rate, can help gain insight into the person’s physical and emotional state [[2]][Bibliography]. Across many different functionalities, such as tracking workouts or monitoring sleep, wearables also present an exciting opportunity to detect stress. In doing so, wearable users today, have become more cognizant of their emotional state and worked to improve it [[3]][Bibliography]. Given that stress can lead to long term health issues, such as "heart disease, high blood pressure, diabetes, and ... depression or anxiety" [[4]][Bibliography], it is crucial for us to ensure the accuracy of wearables.
+
+However, researchers have found evidence to be skeptical of the accuracy and insights a wearable watch is capable of offering [[5]][Bibliography]. For example, experts at the Cleveland Clinic found that heart-rate data in many popular wearables can be wrong 10-20% of the time [[6]][Bibliography]. While research has been done to examine whether these sensors are capable of detecting excited affective states, such as stress, relative to a subject's baseline state, there are far fewer studies that examine whether these sensors are capable of distinguishing excited affective states from one another, such as stress vs amusement [[7][Bibliography]. A recent paper was able to generate highly accurate machine learning models that classified wearers' states among baseline, stress, and amusement conditions using an Empatica 4 wristband [[7][Bibliography]. 
+
+In this paper we hope to expand upon the work done within this paper by delving deeper into the relationship between the metrics collected by these sensors and the wearers' affective states with a logistic regression model. Specifically, we hope to accomplish the following goals:
+
+1. Determine whether sensor data are useful in discriminating between stress and amusement conditions
+2. Understand and describe how sensor data are useful in discriminating between stress and amusement
+3. Determine which types and combination(s) of sensor data are most useful in discriminating between stress and amusement
+4. Determine whether we can detect stress (vs amusement) only using the wrist-worn wearable
+5. Quantify the heterogeneity across individuals in the response to stress versus amusement
+
+
 # Data
+
+For the purposes of this paper, we will use the biological definition of stress as an affective state defined to be the 'nonspecific response of the body to any demand upon it' [[7][Bibliography].
 
 # Exploratory Data Analysis
 
@@ -52,3 +67,11 @@ ggplot2::theme_set(new = theme_bw())
 # Appendix
 
 ## Bibliography
+
+1. Wray, S. (2017, July 27). Explosion of smart, wearable devices will triple revenue by 2016. Retrieved September 20, 2020, from https://inform.tmforum.org/features-and-analysis/2014/09/explosion-smart-wearable-devices-will-triple-revenue-2016/
+2. Lu, T., Fu, C., Ma, M., Fang, C., & Turner, A. (2016, September 14). Healthcare Applications of Smart Watches. A Systematic Review. Retrieved September 20, 2020, from https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5052554/
+3. Hiner, J. (2020, April 27). How Apple Watch helped fix my toxic level of stress. Retrieved September 20, 2020, from https://www.cnet.com/news/apple-watch-uncovered-my-toxic-stress-level-and-helped-me-fix-it/
+4. 5 Things You Should Know About Stress. (n.d.). Retrieved September 20, 2020, from https://www.nimh.nih.gov/health/publications/stress/index.shtml
+5. Clark, E. (2019, October 17). New Report Finds That More Than Half of Wearable Users Fear Inaccurate Health Data, Malfunctions; Users Cautioned Against Relying on Devices. Retrieved September 20, 2020, from https://www.prnewswire.com/news-releases/new-report-finds-that-more-than-half-of-wearable-users-fear-inaccurate-health-data-malfunctions-users-cautioned-against-relying-on-devices-300940397.html
+6. Weintraub, K. (2016, October 13). Wearable health monitors not always reliable, study shows. Retrieved September 20, 2020, from https://www.usatoday.com/story/news/2016/10/12/wearable-health-monitors-not-always-reliable-study-shows/91922858/
+7. Philip Schmidt, Attila Reiss, Robert Duerichen, Claus Marberger, and Kristof Van Laerhoven. 2018. Introducing WESAD, a Multimodal Dataset for Wearable Stress and Affect Detection. In Proceedings of the 20th ACM International Conference on Multimodal Interaction (ICMI '18). Association for Computing Machinery, New York, NY, USA, 400–408. DOI:https://doi.org/10.1145/3242969.3242985
