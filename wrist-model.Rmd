@@ -1,0 +1,40 @@
+---
+title: "Wrist Model"
+author: "Anna Darwish"
+date: "9/20/2020"
+output: html_document
+---
+
+```{r, function checking for installed packages, echo=FALSE, results="hide", include=FALSE}
+# Validate that all necessary packaged have been downloaded, install otherwise or throw err package DNE
+pkgTest <- function(x)
+{
+  if (!require(x,character.only = TRUE))
+  {
+    install.packages(x,repos = "http://cran.r-project.org", dep=TRUE)
+    if(!require(x,character.only = TRUE)) stop("Package not found")
+  }
+}
+```
+
+```{r Package Test Libraries, echo=FALSE, results="hide", include=FALSE}
+pkgTest("dplyr")
+pkgTest("ggplot2")
+pkgTest("tidyr")
+pkgTest("knitr")
+pkgTest("kableExtra")
+```
+
+```{r Load in Libraries, echo=FALSE, results="hide", include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+knitr::opts_chunk$set(echo = FALSE,
+                      message = FALSE,
+                      warning = FALSE)
+ggplot2::theme_set(new = theme_bw())
+```
+
+
