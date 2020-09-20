@@ -1,4 +1,5 @@
 import pandas as pd
+from itertools import chain
 
 subjects = [i for i in range(2, 18)]
 subjects.remove(12)
@@ -8,6 +9,21 @@ SIGNAL = "signal"
 SENSOR = "sensor"
 CHEST = "chest"
 WRIST = "wrist"
+LABEL = "label"
+METRICS = ["EMG", "ECG", "EDA", "Temp", "Resp"]
+PATH = "/hpc/group/sta440-f20/WESAD/WESAD/"
+
+STRESS = 2
+AMUSEMENT = 3
+
+"""
+# This function basically un-nests the nested arrays within the pickle format
+"""
+
+
+def flatten(list_of_lists):
+    "Flatten one level of nesting"
+    return chain.from_iterable(list_of_lists)
 
 """
 This function loads in the pickle file, segments it to the desired sensor, and converts it to a 
@@ -17,25 +33,26 @@ merged with the rest of the sensor
 
 
 def load_pkl(file_name, s_id, type=CHEST):
-    with open(file_name, "rb") as file:
-        pkl = pd.read_pickle(file)
-        data = pkl[SIGNAL]
-        data_sensor = data[type]
+    data = pd.read_pickle(file_name)
+    df = pd.DataFrame()
 
-        for metric, value in data_sensor.items():
-            data_sensor[metric] = value.tolist()
+    for m in METRICS:
+        df[m] = list(flatten(data[SIGNAL][CHEST][m]))
 
-        df = pd.DataFrame(data_sensor)
-        df[SUBJECT] = [s_id for i in range(len(df))]
-        #df[sensor] = [type for i in range(len(df))]
+    df[LABEL] = data[LABEL]
+    df = df.loc[df[LABEL].isin([STRESS, AMUSEMENT])]
+    df[SUBJECT] = [s_id for i in range(len(df))]
+
+    df = pd.DataFrame(df)
+
     return df
 
 
-chest_df = load_pkl("S2/S2.pkl", "S2")
+chest_df = load_pkl(PATH + "S2/S2.pkl", "S2")
 
 for s in subjects[1:]:
     sid = "S" + str(s)
-    curr_df = load_pkl(sid + "/" + sid + ".pkl", "S" + str(s))
+    curr_df = load_pkl(PATH + sid + "/" + sid + ".pkl", "S" + str(s))
     chest_df = chest_df.append(curr_df)
 
 
