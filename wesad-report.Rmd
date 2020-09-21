@@ -54,9 +54,13 @@ In this paper we hope to expand upon the work done within this paper by delving 
 
 # Data
 
-For the purposes of this paper, we will use the biological definition of stress as an affective state defined to be the 'nonspecific response of the body to any demand upon it' [[7][Bibliography].
+## Collection Overview
 
-# Exploratory Data Analysis
+For the purposes of this paper, we will use the biological definition of stress: an affective state defined to be the 'nonspecific response of the body to any demand upon it' [[7][Bibliography]. The data used in this paper was collected by attaching a *RespiBAN Professional* chest device and *Empatica E4* wristband to 17 graduate students. Due to sensor malfunctions, two of the subjects' data had to be discarded, for a final total of 15 subjects. This experiment sought to elicit three different affective states: neutral, stress, and amusement, and accomplished this by having the subjects perform stressful tasks, such as public speaking, amusing tasks, such as watching funny videos with breaks of meditation between sessions to restore subjects to their baseline. 
+
+## Exploratory Data Analysis
+
+# Methods
 
 # Results
 
