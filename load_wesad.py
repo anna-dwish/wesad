@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from itertools import chain
 
 subjects = [i for i in range(2, 18)]
@@ -10,7 +11,10 @@ SENSOR = "sensor"
 CHEST = "chest"
 WRIST = "wrist"
 LABEL = "label"
-METRICS = ["EMG", "ECG", "EDA", "Temp", "Resp"]
+METRICS = ["EMG", "ECG", "EDA", "Temp", "Resp", "ACC"]
+WRIST_METRICS = ["ACC", "BVP", "EDA", "HR", "IBI", "TEMP"]
+
+UP_SAMPLE = {"EDA": [4, 24]}
 PATH = "/hpc/group/sta440-f20/WESAD/WESAD/"
 
 STRESS = 2
@@ -25,19 +29,81 @@ def flatten(list_of_lists):
     "Flatten one level of nesting"
     return chain.from_iterable(list_of_lists)
 
+
 """
-This function loads in the pickle file, segments it to the desired sensor, and converts it to a 
-dataframe, along with an additional column that will help distinguish it by subject when it is
+This function up-samples the low resolution data from its current_Hz to its goal_Hz. It accomplishes this with linear
+spacing between each pair of values (for the final value, it simply repeats the value). For example, if I was given an
+input of [2, 6, 12, 24] where the current_Hz = 2 (so this input covers 2 seconds) and I wanted to linearly up-sample
+to 4 Hz, this function would return [2, 4, 6, 9, 12, 18, 24, 24]. Note that it assumes goal_Hz > current_Hz and
+goal_Hz % current_Hz = 0
+"""
+
+
+def linear_up_sample(low_res_data, current_Hz, goal_Hz):
+    assert (goal_Hz > current_Hz)
+    assert (goal_Hz % current_Hz == 0)
+
+    idx = 0
+    reps = int(goal_Hz / current_Hz)
+
+    while idx < len(low_res_data):
+        # For the last value, we can't do a linear spacing between it and the next value, so just repeat
+        if idx + 1 >= len(low_res_data):
+            low_res_data[idx:] = [low_res_data[-1] for j in range(reps - 1)]
+            break
+        else:
+            low_res_data[idx:(idx + 2)] = np.linspace(low_res_data[idx], low_res_data[idx + 1], reps).tolist()
+        idx = idx + reps - 1
+    return low_res_data
+
+
+"""
+This function loads in the pickle file, segments it to the desired sensor, and converts it to a
+data frame, along with an additional column that will help distinguish it by subject when it is
 merged with the rest of the sensor
 """
 
 
-def load_pkl(file_name, s_id, type=CHEST):
+def generate_subject_df(file_path, s_id):
+    file_name = file_path + s_id + ".pkl"
     data = pd.read_pickle(file_name)
     df = pd.DataFrame()
+    df_wrist = pd.DataFrame()
 
     for m in METRICS:
+        # The x, y, and z information was stored together, which is why ACC needs distinct handling
+        if m == "ACC":
+            df['ACC_chest_X'] = data[SIGNAL][CHEST][m][:, 0]
+            df['ACC_chest_Y'] = data[SIGNAL][CHEST][m][:, 1]
+            df['ACC_chest_Z'] = data[SIGNAL][CHEST][m][:, 2]
+            continue
         df[m] = list(flatten(data[SIGNAL][CHEST][m]))
+
+    for m in WRIST_METRICS:
+
+        df_wrist = pd.read_csv(file_path + m + ".csv", header=None)
+
+        if m in UP_SAMPLE:
+            high_res_data = linear_up_sample(list(df_wrist.iloc[:, 0]), UP_SAMPLE[m][0], UP_SAMPLE[m][1])
+            df_wrist = pd.DataFrame()
+            df_wrist[m] = high_res_data
+
+        rep_factor = int(len(df) / len(df_wrist))
+        df_wrist = df_wrist.loc[df_wrist.index.repeat(rep_factor)]
+
+        if len(df_wrist) != len(df):
+            df_wrist_last = df_wrist.iloc[[-1]]
+            df_wrist_last = df_wrist_last.loc[df_wrist_last.index.repeat(len(df) - len(df_wrist))]
+
+            df_wrist = pd.concat([df_wrist, df_wrist_last], ignore_index=True)
+
+        # Again, ACC needs separate treatment as this data file includes 3 co-variates
+        if m == "ACC":
+            df[m + '_EMP4_x'] = list(df_wrist.iloc[:, 0])
+            df[m + '_EMP4_y'] = list(df_wrist.iloc[:, 1])
+            df[m + '_EMP4_z'] = list(df_wrist.iloc[:, 2])
+        else:
+            df[m + "_EMP4"] = list(df_wrist.iloc[:, 0])
 
     df[LABEL] = data[LABEL]
     df = df.loc[df[LABEL].isin([STRESS, AMUSEMENT])]
@@ -48,14 +114,12 @@ def load_pkl(file_name, s_id, type=CHEST):
     return df
 
 
-chest_df = load_pkl(PATH + "S2/S2.pkl", "S2")
+merged_df = generate_subject_df(PATH + "S2/", "S2")
 
 for s in subjects[1:]:
     sid = "S" + str(s)
-    curr_df = load_pkl(PATH + sid + "/" + sid + ".pkl", "S" + str(s))
-    chest_df = chest_df.append(curr_df)
+    current_subject_df = generate_subject_df(PATH + sid + "/", "S" + str(s))
+    merged_df = merged_df.append(current_subject_df)
 
 
-chest_df.to_csv("merged_chest.csv")
-
-
+merged_df.to_csv("merged_wesad.csv")
