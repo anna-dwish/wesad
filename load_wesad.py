@@ -11,12 +11,11 @@ SENSOR = "sensor"
 CHEST = "chest"
 WRIST = "wrist"
 LABEL = "label"
-METRICS = ["EMG", "ECG", "EDA", "Temp", "Resp"]
-WRIST_METRICS = ["EDA", "TEMP", "HR"]
+METRICS = ["EMG", "ECG", "EDA", "Temp", "Resp", "ACC"]
+WRIST_METRICS = ["ACC", "BVP", "EDA", "HR", "IBI", "TEMP"]
 
 UP_SAMPLE = {"EDA": [4, 24]}
 PATH = "/hpc/group/sta440-f20/WESAD/WESAD/"
-EMP_DATA = "_E4_Data"
 
 STRESS = 2
 AMUSEMENT = 3
@@ -33,19 +32,19 @@ def flatten(list_of_lists):
 
 """
 This function up-samples the low resolution data from its current_Hz to its goal_Hz. It accomplishes this with linear
-spacing between each pair of values (for the final value, it simply repeats the value). For example, if I was given an 
+spacing between each pair of values (for the final value, it simply repeats the value). For example, if I was given an
 input of [2, 6, 12, 24] where the current_Hz = 2 (so this input covers 2 seconds) and I wanted to linearly up-sample
-to 4 Hz, this function would return [2, 4, 6, 9, 12, 18, 24, 24]. Note that it assumes goal_Hz > current_Hz and 
+to 4 Hz, this function would return [2, 4, 6, 9, 12, 18, 24, 24]. Note that it assumes goal_Hz > current_Hz and
 goal_Hz % current_Hz = 0
 """
 
 
 def linear_up_sample(low_res_data, current_Hz, goal_Hz):
-    assert(goal_Hz > current_Hz)
-    assert(goal_Hz % current_Hz == 0)
+    assert (goal_Hz > current_Hz)
+    assert (goal_Hz % current_Hz == 0)
 
     idx = 0
-    reps = int(goal_Hz/current_Hz)
+    reps = int(goal_Hz / current_Hz)
 
     while idx < len(low_res_data):
         # For the last value, we can't do a linear spacing between it and the next value, so just repeat
@@ -59,8 +58,8 @@ def linear_up_sample(low_res_data, current_Hz, goal_Hz):
 
 
 """
-This function loads in the pickle file, segments it to the desired sensor, and converts it to a 
-dataframe, along with an additional column that will help distinguish it by subject when it is
+This function loads in the pickle file, segments it to the desired sensor, and converts it to a
+data frame, along with an additional column that will help distinguish it by subject when it is
 merged with the rest of the sensor
 """
 
@@ -72,10 +71,17 @@ def generate_subject_df(file_path, s_id):
     df_wrist = pd.DataFrame()
 
     for m in METRICS:
+        # The x, y, and z information was stored together, which is why ACC needs distinct handling
+        if m == "ACC":
+            df['ACC_chest_X'] = data[SIGNAL][CHEST][m][:, 0]
+            df['ACC_chest_Y'] = data[SIGNAL][CHEST][m][:, 1]
+            df['ACC_chest_Z'] = data[SIGNAL][CHEST][m][:, 2]
+            continue
         df[m] = list(flatten(data[SIGNAL][CHEST][m]))
 
     for m in WRIST_METRICS:
-        df_wrist = pd.read_csv(file_path + s_id + EMP_DATA + "/" + m + ".csv", header=None)
+
+        df_wrist = pd.read_csv(file_path + m + ".csv", header=None)
 
         if m in UP_SAMPLE:
             high_res_data = linear_up_sample(list(df_wrist.iloc[:, 0]), UP_SAMPLE[m][0], UP_SAMPLE[m][1])
@@ -86,13 +92,18 @@ def generate_subject_df(file_path, s_id):
         df_wrist = df_wrist.loc[df_wrist.index.repeat(rep_factor)]
 
         if len(df_wrist) != len(df):
-            # extend the last row for the remaining ones if uneven division
             df_wrist_last = df_wrist.iloc[[-1]]
             df_wrist_last = df_wrist_last.loc[df_wrist_last.index.repeat(len(df) - len(df_wrist))]
 
             df_wrist = pd.concat([df_wrist, df_wrist_last], ignore_index=True)
 
-        df[m + "_EMP4"] = list(df_wrist.iloc[:, 0])
+        # Again, ACC needs separate treatment as this data file includes 3 co-variates
+        if m == "ACC":
+            df[m + '_EMP4_x'] = list(df_wrist.iloc[:, 0])
+            df[m + '_EMP4_y'] = list(df_wrist.iloc[:, 1])
+            df[m + '_EMP4_z'] = list(df_wrist.iloc[:, 2])
+        else:
+            df[m + "_EMP4"] = list(df_wrist.iloc[:, 0])
 
     df[LABEL] = data[LABEL]
     df = df.loc[df[LABEL].isin([STRESS, AMUSEMENT])]
