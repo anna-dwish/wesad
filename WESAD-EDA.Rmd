@@ -1,0 +1,308 @@
+---
+title: "Case Study 2 - EDA"
+author: "Alice Liao"
+date: "9/19/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(cowplot)
+```
+
+# S2 Raw Data
+```{r include=F}
+# load E4 ACC data, sample rate = 32Hz
+# values are in 1/64 g
+S2.E4.ACC <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_E4_Data/ACC.csv",header = F)
+S2.E4.ACC <- S2.E4.ACC %>%
+    slice(-c(1,2)) %>%
+  transmute(X = V1,
+            Y = V2,
+            Z = V3,
+            time = 1:(nrow(S2.E4.ACC)-2))
+  
+head(S2.E4.ACC)
+nrow(S2.E4.ACC)
+```
+
+```{r include=F}
+ggplot(S2.E4.ACC) +
+  geom_line(aes(x = time, y = X/64), color = "blue") +
+  labs(x = "Time", y = "X, unit in g")
+
+ggplot(S2.E4.ACC) +
+  geom_line(aes(x = time, y = Y/64))+
+    labs(x = "Time", y = "Y, unit in g")
+
+ggplot(S2.E4.ACC) +
+  geom_line(aes(x = time, y = Z/64))+
+    labs(x = "Time", y = "Z, unit in g")
+```
+
+```{r fig.width=10, fig.height=4}
+ggplot(S2.E4.ACC) +
+  geom_line(aes(x = time, y = X/64), color = "dark blue") +
+  geom_line(aes(x = time, y = Y/64), color = "red") + 
+  geom_line(aes(x = time, y = Z/64), color = "dark green") +
+  labs(y = "Accelerometer, unit in g",
+       title = "Subject 2")
+```
+
+```{r include=F}
+# time format is minute.second
+# ignore sRead, fRead
+S2.Truth <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_quest.csv", sep = ";", header = F)
+head(S2.Truth)
+
+S2.conditions <- S2.Truth %>%
+  select(V1, V2, V3, V4, V5, V6) %>%
+  slice(c(2:4))
+S2.conditions <- as.data.frame(t(S2.conditions)) %>%
+  slice(-1) %>%
+  transmute(condition = V1,
+            start = V2,
+            end = V3)
+
+```
+
+```{r fig.height=5, fig.width=8}
+S2.E4.IBI <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_E4_Data/IBI.csv",
+                      header = F)
+S2.E4.IBI <- S2.E4.IBI %>%
+  slice(-1) %>%
+  transmute(start = V1,
+            IBI = as.numeric(V2))
+p0.IBI.S2 = ggplot(data = S2.E4.IBI) +
+  geom_histogram(aes(x = IBI)) +
+  labs(title = "S2: Distribution of IBI")
+
+S3.E4.IBI <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S3/S3_E4_Data/IBI.csv",
+                      header = F)
+S3.E4.IBI <- S3.E4.IBI %>%
+  slice(-1) %>%
+  transmute(start = V1,
+            IBI = as.numeric(V2))
+p0.IBI.S3 = ggplot(data = S3.E4.IBI) +
+  geom_histogram(aes(x = IBI)) +
+  labs(title = "S3: Distribution of IBI")
+
+plot_grid(p0.IBI.S2,p0.IBI.S3, nrow = 2)
+```
+
+
+# EDA for merged Subject 2 and Subject 3 Dataset (Downsampled)
+
+```{r}
+# load merged csv (subject 2 & subject 3)
+S2_S3_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad.csv", header = T)
+S2_S3_merged <- S2_S3_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+
+S2_merged <- S2_S3_merged %>%
+  filter(subject == "S2") %>%
+  select(-subject)
+summary(S2_merged)
+
+S3_merged <- S2_S3_merged %>%
+  filter(subject == "S3") %>%
+  select(-subject)
+summary(S3_merged)
+```
+
+
+```{r S2-temperature, fig.height=5, fig.width=8}
+p1 = ggplot(S2_merged) +
+  geom_histogram(aes(x = Temp, fill = label)) +
+  labs(title = "S2 Chest Measured Body Temperature")
+
+p2 = ggplot(S2_merged) +
+  geom_histogram(aes(x = TEMP_EMP4, fill = label)) +
+  labs(title = "S2 Wrist Measured Body Temperature")
+
+plot_grid(p1, p2, nrow = 2)
+```
+
+
+```{r S2-temperature-corr, fig.height=3, fig.width=5}
+ggplot(S2_merged, aes(x = Temp, y = TEMP_EMP4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Chest Body Temperature", y = "Wrist Body Temperature",
+       title = "S2: Wrist vs. Chest Temprature")
+```
+
+
+```{r S3-temperature-0, fig.height=3, fig.width=5}
+ggplot(S3_merged) +
+  geom_histogram(aes(x = Temp, fill = label)) +
+  labs(title = "S3 Chest Measured Body Temperature") 
+# Note there are abnormally low body tempratures (15.42278 degrees) detected; 
+# 100 observations in the downsampled dataset; all under stressed condition
+```
+
+
+```{r S3-temperature, fig.height=5, fig.width=8}
+S3_merged <- S3_merged %>%
+  filter(Temp > 30) 
+
+ # filter out ~15 degrees body temperature
+
+p3 = ggplot(S3_merged) +
+  geom_histogram(aes(x = Temp, fill = label)) +
+  labs(title = "S3 Chest Measured Body Temperature")
+
+p4 = ggplot(S3_merged) +
+  geom_histogram(aes(x = TEMP_EMP4, fill = label)) +
+  labs(title = "S3 Wrist Measured Body Temperature")
+
+plot_grid(p3, p4, nrow = 2)
+```
+
+
+```{r S3-temperature-corr, fig.height=3, fig.width=5}
+ggplot(S3_merged, aes(x = Temp, y = TEMP_EMP4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Chest Body Temperature", y = "Wrist Body Temperature",
+       title = "S3: Wrist vs Chest Temperature") 
+```
+For both S2 and S3, wrist temperature data suggests clear distinction under amused and stressed conditions. 
+
+```{r EMG, fig.height=4, fig.width=10}
+p5 = ggplot(S2_merged) +
+  geom_histogram(aes(x = EMG, fill = label)) +
+  labs(title = "S2 Chest EMG")
+
+p6 = ggplot(S3_merged) +
+  geom_histogram(aes(x = EMG, fill = label)) +
+  labs(title = "S3 Chest EMG")
+
+plot_grid(p5,p6)
+```
+S3 EMG distribution when amused seems to have two modes; the distrubtions are very different for S2 and S3 --> heterogeity?
+
+```{r ECG,fig.height=4, fig.width=10}
+p7 = ggplot(S2_merged) +
+  geom_histogram(aes(x = ECG, fill = label)) +
+  labs(title = "S2 Chest ECG")
+
+p8 = ggplot(S3_merged) +
+  geom_histogram(aes(x = ECG, fill = label)) +
+  labs(title = "S3 Chest ECG")
+
+plot_grid(p7,p8)
+```
+```{r S2-EDA,fig.height=4, fig.width=10}
+p9 = ggplot(S2_merged) +
+  geom_histogram(aes(x = EDA, fill = label)) +
+  labs(title = "S2 Chest EDA")
+
+p10 = ggplot(S2_merged) +
+  geom_histogram(aes(x = EDA_EMP4, fill = label)) +
+  labs(title = "S2 Wrist EDA")
+
+plot_grid(p9,p10)
+```
+
+
+```{r S2-EDA-corr,fig.height=3, fig.width=5}
+ggplot(S2_merged, aes(x = EDA, y = EDA_EMP4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Chest EDA", y = "Wrist EDA",
+       title = "S2: Wrist vs Chest EDA") 
+```
+
+
+```{r S3-EDA,fig.height=4, fig.width=10}
+p11 = ggplot(S3_merged) +
+  geom_histogram(aes(x = EDA, fill = label)) +
+  labs(title = "S3 Chest EDA")
+
+p12 = ggplot(S3_merged) +
+  geom_histogram(aes(x = EDA_EMP4, fill = label)) +
+  labs(title = "S3 Wrist EDA")
+
+plot_grid(p11,p12)
+```
+EDA distributions look different chest and wrist and for different subjects too. S3 in general has higher EDA; when stressed there is more sweat. 
+
+```{r S3-EDA-corr,fig.height=3, fig.width=5}
+ggplot(S3_merged, aes(x = EDA, y = EDA_EMP4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Chest EDA", y = "Wrist EDA",
+       title = "S3: Wrist vs Chest EDA") 
+```
+
+
+```{r resp,fig.height=5, fig.width=8}
+p13 = ggplot(S2_merged) +
+  geom_histogram(aes(x = Resp, fill = label)) +
+  labs(title = "S2 Chest Respiration")
+
+p14 = ggplot(S3_merged) +
+  geom_histogram(aes(x = Resp, fill = label)) +
+  labs(title = "S3 Chest Respiration")
+
+plot_grid(p13,p14, nrow = 2)
+```
+
+```{r S2-HR-SRV,fig.height=5, fig.width=8}
+p15 = ggplot(S2_merged) +
+  geom_histogram(aes(x = HR_EMP4, fill = label)) +
+  labs(title = "S2 Wrist Heart Rate")
+
+p16 = ggplot(S2_merged) +
+  geom_histogram(aes(x = HRV, fill = label)) +
+  labs(title = "S3 Wrist Heart Rate Variability")
+
+plot_grid(p15,p16, nrow = 2)
+```
+
+
+# PCA
+
+```{r S2-PCA, echo=F}
+S2_merged_PCA <- S2_merged %>%
+  select(-c(X,label))
+
+apply(S2_merged_PCA, 2, var)
+
+S2_pr.out <- prcomp(S2_merged_PCA, scale = TRUE) # to standardize predictors
+
+#S2_pr.out$rotation
+S2_pr.var <- S2_pr.out$sdev^2 #the variance explained by each principal component
+S2_pve <- S2_pr.var/sum(S2_pr.var)
+
+plot(S2_pve, xlab = "Principal Component",
+     ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b',
+     main = "Principal Component Analysis for Subject 2")
+```
+
+```{r S3-PCA, echo=F}
+S3_merged_PCA <- S3_merged %>%
+  select(-c(X,label))
+
+apply(S3_merged_PCA, 2, var)
+
+S3_pr.out <- prcomp(S3_merged_PCA, scale = TRUE) # to standardize predictors
+
+#S3_pr.out$rotation
+S3_pr.var <- S3_pr.out$sdev^2 #the variance explained by each principal component
+S3_pve <- S3_pr.var/sum(S3_pr.var)
+
+plot(S3_pve, xlab = "Principal Component",
+     ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b',
+     main = "Principal Component Analysis for Subject 2")
+```
+
+
