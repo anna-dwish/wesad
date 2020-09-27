@@ -17,7 +17,7 @@ library(cowplot)
 ```
 
 # S2 Raw Data
-```{r include=F}
+```{r eval=F}
 # load E4 ACC data, sample rate = 32Hz
 # values are in 1/64 g
 S2.E4.ACC <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_E4_Data/ACC.csv",header = F)
@@ -32,7 +32,7 @@ head(S2.E4.ACC)
 nrow(S2.E4.ACC)
 ```
 
-```{r include=F}
+```{r eval=F}
 ggplot(S2.E4.ACC) +
   geom_line(aes(x = time, y = X/64), color = "blue") +
   labs(x = "Time", y = "X, unit in g")
@@ -46,7 +46,7 @@ ggplot(S2.E4.ACC) +
     labs(x = "Time", y = "Z, unit in g")
 ```
 
-```{r fig.width=10, fig.height=4}
+```{r fig.width=10, fig.height=4,eval=F}
 ggplot(S2.E4.ACC) +
   geom_line(aes(x = time, y = X/64), color = "dark blue") +
   geom_line(aes(x = time, y = Y/64), color = "red") + 
@@ -55,7 +55,7 @@ ggplot(S2.E4.ACC) +
        title = "Subject 2")
 ```
 
-```{r include=F}
+```{r eval=F}
 # time format is minute.second
 # ignore sRead, fRead
 S2.Truth <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_quest.csv", sep = ";", header = F)
@@ -72,7 +72,7 @@ S2.conditions <- as.data.frame(t(S2.conditions)) %>%
 
 ```
 
-```{r fig.height=5, fig.width=8}
+```{r fig.height=5, fig.width=8,eval=F}
 S2.E4.IBI <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_E4_Data/IBI.csv",
                       header = F)
 S2.E4.IBI <- S2.E4.IBI %>%
@@ -302,22 +302,7 @@ plot(S3_pve, xlab = "Principal Component",
      main = "Principal Component Analysis for Subject 3")
 ```
 
-# EDA for merged Subject 4 (Downsampled)
-```{r}
-S4_S5_S6_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_4_5_6.csv", header = T)
-summary(S4_S5_S6_merged)
-
-S4_S5_S6_merged <- S4_S5_S6_merged %>%
-  mutate(subject = as.factor(subject),
-         label = as.factor(label))
-
-S4_merged <- S4_S5_S6_merged %>%
-  filter(subject == "S2") %>% #Need to amend this
-  select(-subject)
-summary(S4_merged)
-
-```
-
+# EDA Functions
 
 ```{r plot-functions}
 # function to plot distributions of body temp measured at chest and wrist
@@ -369,27 +354,310 @@ get_EDA_plots <- function(subject, data){
   
   plot_grid(p_EDA_1,p_EDA_2)
 }
-get_EDA_plots("S4", S4_merged)
+
+get_EDA_corr <- function(subject, data){
+ggplot(data, aes(x = EDA, y = EDA_EMP4)) +
+  geom_point(aes(color=label)) +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Chest EDA", y = "Wrist EDA",
+       title = paste0(subject," Wrist vs Chest EDA"))
+}
+
+# function to plot distribution of respiration
+get_resp_plot <- function(subject, data){
+  ggplot(data) +
+    geom_histogram(aes(x = Resp, fill = label)) +
+    labs(title = paste0(subject," Chest Respiration"))
+}
+
+# function to plot the distribution of heart rate and HRV (SDNN method)
+get_HR_plots <- function(subject, data){
+  p_HR = ggplot(data) +
+    geom_histogram(aes(x = HR_EMP4, fill = label)) +
+    labs(title = paste0(subject," Wrist Heart Rate"))
+  
+  p_HR_time = ggplot(data) +
+    geom_line(aes(x = X, y = HR_EMP4, color = label)) +
+    labs(x = "Time",title = paste0(subject," in Hear Rate"))
+  
+  p_HRV = ggplot(data) +
+  geom_histogram(aes(x = HRV, fill = label)) +
+  labs(title = paste0(subject," Wrist Heart Rate Variability"))
+  
+  plot_grid(p_HR,p_HR_time,p_HRV, nrow = 3)
+}
+
+
 ```
+
+# EDA for merged Subject 4 (Downsampled) 
+```{r load-data-S4,include=F}
+S4_S5_S6_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_4_5_6.csv", header = T)
+
+S4_S5_S6_merged <- S4_S5_S6_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+summary(S4_S5_S6_merged)
+
+```
+
+```{r S4, eval=F warning=F,message=F}
+S4_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S4") %>% 
+  select(-subject)
+summary(S4_merged)
+
+get_temp_plots("S4",S4_merged)
+get_temp_corr("S4", S4_merged)
+get_EMG_plot("S4",S4_merged)
+get_ECG_plot("S4", S4_merged)
+get_EDA_plots("S4", S4_merged)
+get_EDA_corr("S4",S4_merged)
+get_resp_plot("S4",S4_merged)
+get_HR_plots("S4",S4_merged)
+```
+
 
 ```{r}
-get_temp_plots("S4",S4_merged)
+S5_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S5") %>%
+  select(-subject)
+summary(S5_merged)
 
-get_temp_corr("S4", S4_merged)
+get_temp_plots("S5",S5_merged)
+get_temp_corr("S5", S5_merged)
+get_EMG_plot("S5",S5_merged)
+get_ECG_plot("S5", S5_merged)
+get_EDA_plots("S5", S5_merged)
+get_EDA_corr("S5",S5_merged)
+get_resp_plot("S5",S5_merged)
+get_HR_plots("S5",S5_merged)
+```
+# EDA for Subject 6
+```{r, message=F, warning=F, echo=F}
+S6_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S6") %>%
+  select(-subject)
+#summary(S6_merged)
 
-get_EMG_plot("S4",S4_merged)
+get_temp_plots("S6",S6_merged)
+get_temp_corr("S6", S6_merged)
+get_EMG_plot("S6",S6_merged)
+get_ECG_plot("S6", S6_merged)
+get_EDA_plots("S6", S6_merged)
+get_EDA_corr("S6",S6_merged)
+get_resp_plot("S6",S6_merged)
+get_HR_plots("S6",S6_merged)
+```
 
-get_ECG_plot("S4", S4_merged)
+```{r load-data-S7-S8-S9,include=F}
+S7_S8_S9_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_7_8_9.csv", header = T)
 
-get_EDA_plot("S4", S4_merged)
+S7_S8_S9_merged <- S7_S8_S9_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+summary(S7_S8_S9_merged)
+```
+
+# EDA for Subject 7 
+```{r S7, message=F, warning=F,echo=F}
+# need to amend this
+S7_merged <- S7_S8_S9_merged %>%
+  filter(subject == "S7") %>% 
+  select(-subject)
+
+summary(S7_merged)
+
+get_temp_plots("S7",S7_merged)
+get_temp_corr("S7", S7_merged)
+get_EMG_plot("S7",S7_merged)
+get_ECG_plot("S7", S7_merged)
+get_EDA_plots("S7", S7_merged)
+get_EDA_corr("S7",S7_merged)
+get_resp_plot("S7",S7_merged)
+get_HR_plots("S7",S7_merged)
+```
+
+# EDA for Subject 8
+
+#### NOTE: Subject had already a rather stressful day, prior to the study.Subject felt rather cold in the room where the stress condition was carried out.
+```{r S8, warning=F, message=F, echo=F}
+S8_merged <- S7_S8_S9_merged %>%
+  filter(subject == "S8") %>% 
+  select(-subject)
+summary(S8_merged)
+
+get_temp_plots("S8",S8_merged)
+get_temp_corr("S8", S8_merged)
+get_EMG_plot("S8",S8_merged)
+get_ECG_plot("S8", S8_merged)
+get_EDA_plots("S8", S8_merged)
+get_EDA_corr("S8",S8_merged)
+get_resp_plot("S8",S8_merged)
+get_HR_plots("S8",S8_merged)
+```
+# EDA for Subject 9
+
+```{r S9, warning=F, message=F,echo=F}
+S9_merged <- S7_S8_S9_merged %>%
+  filter(subject == "S9") %>% 
+  select(-subject)
+summary(S9_merged)
+
+get_temp_plots("S9",S9_merged)
+get_temp_corr("S9", S9_merged)
+get_EMG_plot("S9",S9_merged)
+get_ECG_plot("S9", S9_merged)
+get_EDA_plots("S9", S9_merged)
+get_EDA_corr("S9",S9_merged)
+get_resp_plot("S9",S9_merged)
+get_HR_plots("S9",S9_merged)
+```
+
+```{r load-data-S10-S11-S13,include=F}
+S10_S11_S13_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_10_11_13.csv", header = T)
+
+S10_S11_S13_merged <- S10_S11_S13_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+
+summary(S10_S11_S13_merged)
+```
+# EDA for Subject 10 
+
+```{r S10, warning=F, message=F,echo=F}
+S10_merged <- S10_S11_S13_merged %>%
+  filter(subject == "S10") %>% 
+  select(-subject)
+summary(S10_merged)
+
+get_temp_plots("S10",S10_merged)
+get_temp_corr("S10", S10_merged)
+get_EMG_plot("S10",S10_merged)
+get_ECG_plot("S10", S10_merged)
+get_EDA_plots("S10", S10_merged)
+get_EDA_corr("S10",S10_merged)
+get_resp_plot("S10",S10_merged)
+get_HR_plots("S10",S10_merged)
+```
+
+# EDA for Subject 11
+
+```{r S11, warning=F, message=F,echo=F}
+S11_merged <- S10_S11_S13_merged %>%
+  filter(subject == "S11") %>% 
+  select(-subject)
+summary(S11_merged)
+
+get_temp_plots("S11",S11_merged)
+get_temp_corr("S11", S11_merged)
+get_EMG_plot("S11",S11_merged)
+get_ECG_plot("S11", S11_merged)
+get_EDA_plots("S11", S11_merged)
+get_EDA_corr("S11",S11_merged)
+get_resp_plot("S11",S11_merged)
+get_HR_plots("S11",S11_merged)
+```
+
+# EDA for Subject 13
+
+```{r S13, warning=F, message=F,echo=F}
+S13_merged <- S10_S11_S13_merged %>%
+  filter(subject == "S13") %>% 
+  select(-subject)
+summary(S13_merged)
+
+get_temp_plots("S13",S13_merged)
+get_temp_corr("S13", S13_merged)
+get_EMG_plot("S13",S13_merged)
+get_ECG_plot("S13", S13_merged)
+get_EDA_plots("S13", S13_merged)
+get_EDA_corr("S13",S13_merged)
+get_resp_plot("S13",S13_merged)
+get_HR_plots("S13",S13_merged)
 ```
 
 
+```{r load-data-S14-S15-S16-S17,include=F}
+S14_S15_S16_S17_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_14_15_16_17.csv", 
+                                   header = T)
 
+S14_S15_S16_S17_merged <- S14_S15_S16_S17_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
 
+summary(S14_S15_S16_S17_merged)
+```
 
+# EDA for Subject 14
 
+```{r S14, warning=F, message=F,echo=F}
+S14_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S14") %>% 
+  select(-subject)
+summary(S14_merged)
 
+get_temp_plots("S14",S14_merged)
+get_temp_corr("S14", S14_merged)
+get_EMG_plot("S14",S14_merged)
+get_ECG_plot("S14", S14_merged)
+get_EDA_plots("S14", S14_merged)
+get_EDA_corr("S14",S14_merged)
+get_resp_plot("S14",S14_merged)
+get_HR_plots("S14",S14_merged)
+```
 
+# EDA for Subject 15
 
+```{r S15, warning=F, message=F, echo=F}
+S15_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S15") %>% 
+  select(-subject)
+summary(S15_merged)
+
+get_temp_plots("S15",S15_merged)
+get_temp_corr("S15", S15_merged)
+get_EMG_plot("S15",S15_merged)
+get_ECG_plot("S15", S15_merged)
+get_EDA_plots("S15", S15_merged)
+get_EDA_corr("S15",S15_merged)
+get_resp_plot("S15",S15_merged)
+get_HR_plots("S15",S15_merged)
+```
+
+# EDA for Subject 16
+
+```{r S16, warning=F, message=F, echo=F}
+S16_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S16") %>% 
+  select(-subject)
+summary(S16_merged)
+
+get_temp_plots("S16",S16_merged)
+get_temp_corr("S16", S16_merged)
+get_EMG_plot("S16",S16_merged)
+get_ECG_plot("S16", S16_merged)
+get_EDA_plots("S16", S16_merged)
+get_EDA_corr("S16",S16_merged)
+get_resp_plot("S16",S16_merged)
+get_HR_plots("S16",S16_merged)
+```
+
+# EDA for Subject 17
+
+```{r S16, warning=F, message=F,echo=F}
+S17_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S17") %>% 
+  select(-subject)
+summary(S17_merged)
+
+get_temp_plots("S17",S17_merged)
+get_temp_corr("S17", S17_merged)
+get_EMG_plot("S17",S17_merged)
+get_ECG_plot("S17", S17_merged)
+get_EDA_plots("S17", S17_merged)
+get_EDA_corr("S17",S17_merged)
+get_resp_plot("S17",S17_merged)
+get_HR_plots("S17",S17_merged)
+```
 
