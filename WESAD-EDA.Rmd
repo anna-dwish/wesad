@@ -133,27 +133,15 @@ plot_grid(p1, p2, nrow = 2)
 
 ```{r S2-temperature-corr, fig.height=3, fig.width=5}
 ggplot(S2_merged, aes(x = Temp, y = TEMP_EMP4)) +
-  geom_point() +
+  geom_point(aes(color=label)) +
   geom_smooth(method = "lm", se = F) +
   labs(x = "Chest Body Temperature", y = "Wrist Body Temperature",
        title = "S2: Wrist vs. Chest Temprature")
 ```
 
 
-```{r S3-temperature-0, fig.height=3, fig.width=5}
-ggplot(S3_merged) +
-  geom_histogram(aes(x = Temp, fill = label)) +
-  labs(title = "S3 Chest Measured Body Temperature") 
-# Note there are abnormally low body tempratures (15.42278 degrees) detected; 
-# 100 observations in the downsampled dataset; all under stressed condition
-```
-
 
 ```{r S3-temperature, fig.height=5, fig.width=8}
-S3_merged <- S3_merged %>%
-  filter(Temp > 30) 
-
- # filter out ~15 degrees body temperature
 
 p3 = ggplot(S3_merged) +
   geom_histogram(aes(x = Temp, fill = label)) +
@@ -164,6 +152,14 @@ p4 = ggplot(S3_merged) +
   labs(title = "S3 Wrist Measured Body Temperature")
 
 plot_grid(p3, p4, nrow = 2)
+```
+
+```{r}
+# Which rows from raw data have wierd temp data??
+S2_S3_raw <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_wesad.csv", header = T)
+ 
+#83 rows, ~ 0.1 second chest sensors malfunctioned
+which(S2_S3_raw$Temp <30)
 ```
 
 
@@ -200,6 +196,7 @@ p8 = ggplot(S3_merged) +
 
 plot_grid(p7,p8)
 ```
+
 ```{r S2-EDA,fig.height=4, fig.width=10}
 p9 = ggplot(S2_merged) +
   geom_histogram(aes(x = EDA, fill = label)) +
@@ -257,11 +254,11 @@ plot_grid(p13,p14, nrow = 2)
 ```
 
 ```{r S2-HR-SRV,fig.height=5, fig.width=8}
-p15 = ggplot(S2_merged) +
+p15 = ggplot(S3_merged) +
   geom_histogram(aes(x = HR_EMP4, fill = label)) +
-  labs(title = "S2 Wrist Heart Rate")
+  labs(title = "S3 Wrist Heart Rate")
 
-p16 = ggplot(S2_merged) +
+p16 = ggplot(S3_merged) +
   geom_histogram(aes(x = HRV, fill = label)) +
   labs(title = "S3 Wrist Heart Rate Variability")
 
@@ -302,7 +299,97 @@ S3_pve <- S3_pr.var/sum(S3_pr.var)
 
 plot(S3_pve, xlab = "Principal Component",
      ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b',
-     main = "Principal Component Analysis for Subject 2")
+     main = "Principal Component Analysis for Subject 3")
 ```
+
+# EDA for merged Subject 4 (Downsampled)
+```{r}
+S4_S5_S6_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_4_5_6.csv", header = T)
+summary(S4_S5_S6_merged)
+
+S4_S5_S6_merged <- S4_S5_S6_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+
+S4_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S2") %>% #Need to amend this
+  select(-subject)
+summary(S4_merged)
+
+```
+
+
+```{r plot-functions}
+# function to plot distributions of body temp measured at chest and wrist
+get_temp_plots <- function(subject, data){
+  p_temp_1 = ggplot(data) +
+    geom_histogram(aes(x = Temp, fill = label)) +
+    labs(title = paste0(subject," Chest Body Temperature"))
+  
+  p_temp_2 = ggplot(data) +
+    geom_histogram(aes(x = TEMP_EMP4, fill = label)) +
+    labs(title = paste0(subject," Wrist Body Temperature"))
+  
+  plot_grid(p_temp_1, p_temp_2, nrow = 2)
+}
+
+# function to plot wrist v.s. check temperature
+get_temp_corr <- function(subject, data){
+  ggplot(data, aes(x = Temp, y = TEMP_EMP4)) +
+    geom_point(aes(color=label)) +
+    geom_smooth(method = "lm", se = F) +
+    labs(x = "Chest Body Temperature", y = "Wrist Body Temperature",
+         title = paste0(subject," Wrist vs. Chest Temprature" ))
+}
+
+# function to plot distribution of EMG
+get_EMG_plot <- function(subject, data){
+  ggplot(data) +
+    geom_histogram(aes(x = EMG, fill = label)) +
+    labs(title = paste0(subject," Chest EMG"))
+}
+
+# function to plot distribution of ECG
+
+get_ECG_plot <- function(subject, data){
+  ggplot(data) +
+    geom_histogram(aes(x = ECG, fill = label)) +
+    labs(title = paste0(subject," Chest ECG"))
+}
+
+# function to plot distributions of EDA measured at chest and wrist
+get_EDA_plots <- function(subject, data){
+  p_EDA_1 = ggplot(data) +
+    geom_histogram(aes(x = EDA, fill = label)) +
+    labs(title = paste0(subject," Chest EDA"))
+  
+  p_EDA_2 = ggplot(data) +
+    geom_histogram(aes(x = EDA_EMP4, fill = label)) +
+    labs(title = paste0(subject," Wrist EDA"))
+  
+  plot_grid(p_EDA_1,p_EDA_2)
+}
+get_EDA_plots("S4", S4_merged)
+```
+
+```{r}
+get_temp_plots("S4",S4_merged)
+
+get_temp_corr("S4", S4_merged)
+
+get_EMG_plot("S4",S4_merged)
+
+get_ECG_plot("S4", S4_merged)
+
+get_EDA_plot("S4", S4_merged)
+```
+
+
+
+
+
+
+
+
 
 
