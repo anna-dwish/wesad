@@ -142,5 +142,3 @@ Note that while both sensors also included accelerometer data, it was not includ
 10. Mahdiani S, Jeyhani V, Peltokangas M, Vehkaoja A. Is 50 Hz high enough ECG sampling frequency for accurate HRV analysis? Annu Int Conf IEEE Eng Med Biol Soc. 2015;2015:5948-51. doi: 10.1109/EMBC.2015.7319746. PMID: 26737646.
 11. Braithwaite, J. J., Watson, D. G., Jones, R., &amp; Rowe, M. (2013). A Guide for Analysing Electrodermal Activity (EDA) &amp; Skin Conductance Responses (SCRs) for Psychological Experiments. Retrieved September 26, 2020, from https://www.biopac.com/wp-content/uploads/EDA-SCR-Analysis.pdf
 12. Pourmohammadi, S., &amp; Maleki, A. (2020, May 05). Stress detection using ECG and EMG signals: A comprehensive study. Retrieved September 27, 2020, from https://www.sciencedirect.com/science/article/pii/S0169260719320528
-
-
