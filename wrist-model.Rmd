@@ -37,4 +37,51 @@ knitr::opts_chunk$set(echo = FALSE,
 ggplot2::theme_set(new = theme_bw())
 ```
 
+```{r Chest Electrodermal Activity}
+library(ggplot2)
+library(wesanderson)
+wesad <- read.csv("merged_down_wesad.csv")
+# options(bitmapType='cairo')
+# png("Chest_EDA_Histogram.png")
+
+ggplot(wesad, aes(x=Temp, color=label)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Chest Electrodermal Activity across Subjects") + scale_color_manual(values=wes_palette(n=2, name="Royal1"))
+
+library(dplyr)
+wesad[(wesad$Temp < 28)]
+wesad[which(wesad[,5]<28),]
+wesad
+wesad[which.min(wesad$Temp),]["Temp"] = 30 /63209
+wesad[which.min(wesad$Temp),]
+
+# dev.off()
+# print("Chest EDA Summary")
+# print(summary(wesad$EDA))
+wesad <- read.csv("WESAD/merged_wesad.csv")
+
+
+df.loc[df[0]==var1].index[0]
+wesad[(wesad$Temp < 28)]
+# options(bitmapType='cairo')
+wesad$label <- as.factor(wesad$label)
+print(levels(wesad$label))
+levels(wesad$label)[1] = "Stressed"
+levels(wesad$label)[2] = "Amused"
+wesad$label <- factor(wesad$label, levels=rev(levels(wesad$label)))
+# png("Chest_EDA_Histogram.png")
+ggplot(wesad, aes(x=EDA, color=label)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Chest Electrodermal Activity across Subjects") + scale_color_manual(values=wes_palette(n=2, name="Royal1"))
+
+# png("Wrist_EDA_Histogram.png")
+ggplot(wesad, aes(EDA_EMP4)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Wristband Electrodermal Activity across Subjects")
+# dev.off()
+print("EMP4 EDA Summary")
+print(summary(wesad$EDA_EMP4))
+
+# png("Chest_ECG_Histogram.png")
+ggplot(wesad, aes(ECG)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Chest Electrodermal Activity across Subjects")
+# dev.off()
+print("Chest ECG Summary")
+print(summary(wesad$ECG))
+```
+
+
 
