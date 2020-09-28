@@ -54,6 +54,7 @@ ggplot(S2.E4.ACC) +
   labs(y = "Accelerometer, unit in g",
        title = "Subject 2")
 ```
+Order: base-stress-rest-meditation 1-amusement-meditation II
 
 ```{r eval=F}
 # time format is minute.second
@@ -390,7 +391,7 @@ get_HR_plots <- function(subject, data){
 
 ```
 
-# EDA for merged Subject 4 (Downsampled) 
+# EDA for Subject 4 
 ```{r load-data-S4,include=F}
 S4_S5_S6_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_4_5_6.csv", header = T)
 
@@ -401,7 +402,7 @@ summary(S4_S5_S6_merged)
 
 ```
 
-```{r S4, eval=F warning=F,message=F}
+```{r S4, eval=F, warning=F,message=F}
 S4_merged <- S4_S5_S6_merged %>%
   filter(subject == "S4") %>% 
   select(-subject)
@@ -645,7 +646,7 @@ get_HR_plots("S16",S16_merged)
 
 # EDA for Subject 17
 
-```{r S16, warning=F, message=F,echo=F}
+```{r S17, warning=F, message=F,echo=F}
 S17_merged <- S14_S15_S16_S17_merged %>%
   filter(subject == "S17") %>% 
   select(-subject)
@@ -660,4 +661,178 @@ get_EDA_corr("S17",S17_merged)
 get_resp_plot("S17",S17_merged)
 get_HR_plots("S17",S17_merged)
 ```
+
+```{r}
+S17_merged %>%
+  filter(X<1500000) %>%
+ggplot() +
+  geom_line(aes(x = X, y = Resp), color = "blue")+
+  labs(title = "Amusement RESP")
+
+S17_merged %>%
+  filter(X>2000000) %>%
+ggplot() +
+  geom_line(aes(x = X/700, y = Resp), color = "red")+
+    labs(title = "Stress RESP")
+
+ggplot(S17_merged)+
+  geom_line(aes(x = X, y = Resp, color = label))
+```
+# Others
+```{r eval=F}
+## pseudocode
+library(phenofit)
+# DATA is a time series numeric vector in a window of 60s
+peaks <- findpeaks(S17_merged$Resp, minpeakheight=0)
+
+# peals returns a list, but only "X" is useful. X is a data frame
+peaks <- peaks$X
+# the data frame has #rows = #peaks in DATA, and 4 columns
+# first col: "val" = value of the peak
+# second col: "pos" = position / index of the peak
+# third col: "left" = when the cycle begins
+# fourth col: "right" = when the cycle ends
+
+# "left" and "right" are indices of where the cycle begins/ends,
+# but since original data was collected at 700Hz, 
+# every one unit increase in index means an addition 1/700 seconds
+
+peaks$duration <- peaks$right - peaks$left
+
+# breath rate (since window is 60s)
+nrow(peaks)
+
+```
+
+```{r}
+# merge data
+
+wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S14_S15_S16_S17_merged)
+```
+
+
+# Model
+
+```{r}
+#library(caret)
+  
+glm.fit <- glm(label ~ EDA + Temp + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(S2_S3_merged$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "stressed"
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(S2_S3_merged))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+```{r}
+glm.fit <- glm(label ~ EDA*Temp + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "stressed"
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+```{r}
+glm.fit <- glm(label ~ EDA_EMP4 + TEMP_EMP4 + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "stressed"
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+```{r}
+glm.fit <- glm(label ~ EDA_EMP4 + TEMP_EMP4 + subject + HRV, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "Down"stressed
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+```{r}
+glm.fit <- glm(label ~  EDA_EMP4*TEMP_EMP4 + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "Down"stressed
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+```{r}
+glm.fit <- glm(label ~ subject + HRV, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "Down"stressed
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+
+
 
