@@ -771,11 +771,11 @@ cv.glm(wesad, glm.fit, K = 10)$delta
 ### FINAL MODEL
 ```{r}
 # Randomly shuffle the data
-# wesad is a merged cvs that contain data for all subjects
+# wesad is a merged cvs that contains data for all subjects
 set.seed(1234)
 wesad_random<-wesad[sample(nrow(wesad)),]
 
-#Create 10 equally size folds
+# Create 10 equally sized folds
 folds <- cut(seq(1,nrow(wesad_random)),breaks=10,labels=FALSE)
 
 # Perform 10 fold cross validation

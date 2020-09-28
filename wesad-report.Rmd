@@ -64,6 +64,8 @@ In the Appendix, you can see a full data dictionary in Table 1 that defines the 
 
 ## Exploratory Data Analysis
 
+We plotted the distributions of predictors for each of the subjects and realized for some people, certain predictors serve as perfect separators for amused vs. stressed conditions (i.e. the distributions under the two conditions are significantly different or separated), but that's not always the case. Among all predictors, electrodermal activity (EDA) and temperature are the two physiological signals that appear to be separators for most of the subjects. 
+
 # Methods
 
 Our first step with this dataset involved aligning the *RespiBAN* data and *Empatica E4* data. For the *RespiBAN* data, each metric was collected at 700Hz. Across all metrics, 700Hz was well above the minimum sampling rate [[8]][Bibliography], [[9]][Bibliography], [[10]][Bibliography], [[11]][Bibliography], which is defined to be the minimum number of samples needed to glean precise summary statistics per second. For more detail on the minimum sampling rates (MSRs) across the different metrics, please reference Table 1 in the Appendix. Despite these different MSRs, these metrics ultimately needed to be aligned to represent distinct and whole samples. We selected to down sample to 50 Hz, the MSR of Electrocardiography, as the results of our exploratory data analysis suggests it may be the most useful metric in distinguishing amusement from stress. Further, selecting this sampling rate accomodates all of the metrics' minimum sampling rates and therefore limits the risk of excluding useful information early on. (REMOVE IF ULTIMATELY FALSE) Please reference Table ** later on to compare the results of our final models to those with a sampling rate of 25Hz.
