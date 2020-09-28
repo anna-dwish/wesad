@@ -77,10 +77,15 @@ Finally, we performed feature extraction from these raw sensor values by calcula
 For this paper, we have decided to generate several logistic regression models to better understand and interpret the relationship between these metrics. We began by exploring histograms and scatterplots of our metrics. From this we started with a model with the following predictors: EDA, Body Temperature (since exploratory analysis suggests these two are likely to be the most useful classifiers), and Subject and ran 10-fold cross-validation on our dataset to estimate the test error. Note that it was necessary to include the subject id in order for us to be able to treat our observations as independent. Then we performed forward model selection to check if we missed any other important predictors that can improve the accuracy of prediction. In addition, since both *Empatica E4* wrist sensor and *RespiBan* chest sensor provide readings for EDA and Body Temperature, we can compare which type of sensor is more useful in discriminating between stress and amusement and if wrist data alone is enough. 
 
 # Results
+(report model result, MSE/accuracy)
 
-AUC Curves or ROC Curves
 
 # Discussion
+(compare different models, interpretation of coefficient, answer project goals)
+
+
+(model diagonistics)
+AUC Curves or ROC Curves
 
 # Conclusion
 
