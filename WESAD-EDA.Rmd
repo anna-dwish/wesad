@@ -796,6 +796,38 @@ for(i in 1:10){
   
   print(sum(diag(table(glm.pred, test$label)))/nrow(test)) # accuracy
 }
+
+threshold <- 0.5
+glm.fit <- augment(glm.fit, type.predict = "response")
+
+glm.fit %>%
+  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amussed")) %>%
+  group_by(label, stressed_predict) %>%
+  summarise(n = n()) %>%
+  spread(label, n) %>%
+  kable(format="markdown")
+
+ggplot(glm.fit, aes(d = as.numeric(label), m = .fitted)) + 
+  geom_roc(n.cuts = 0) + 
+  geom_abline(intercept = 0)
+
+roc(glm.fit$label,glm.fit$.fitted)$auc
+
+arm::binnedplot(x=glm.fit$.fitted,y=glm.fit$.resid,
+                xlab="Predicted Probabilities", 
+                main = "Binned Residual vs. Predicted Values")
+
+arm::binnedplot(x=glm.fit$EDA,y=glm.fit$.resid,
+                xlab="EDA", 
+                main = "Binned Residual vs. EDA")
+
+arm::binnedplot(x=glm.fit$Temp,y=glm.fit$.resid,
+                xlab="EDA", 
+                main = "Binned Residual vs. Temp")
+
+glm.fit %>%
+  group_by(subject) %>%
+  summarise(mean_resid = mean(.resid))
 ```
 
 ```{r}
