@@ -5,7 +5,7 @@ from itertools import chain
 
 subjects = [i for i in range(2, 18)]
 subjects.remove(12)
-subjects = [10, 11, 13]
+
 
 SUBJECT = "subject"
 SIGNAL = "signal"
@@ -14,19 +14,19 @@ CHEST = "chest"
 WRIST = "wrist"
 LABEL = "label"
 CHEST_METRICS = ["EMG", "ECG", "EDA", "Temp", "Resp"]
-WRIST_METRICS = ["EDA", "HR", "IBI", "TEMP"]#["ACC", "BVP", "EDA", "HR", "IBI", "TEMP"]
+WRIST_METRICS = ["EDA", "HR", "IBI", "TEMP"]
 MERGED_METRICS = CHEST_METRICS + [m + "_EMP4" for m in WRIST_METRICS] + ["HRV"]
 MERGED_METRICS.remove("IBI_EMP4")
-PEAKS = ["ECG, Resp"]
+PEAKS = ["ECG", "Resp"]
 
 
 UP_SAMPLE = {"EDA": [4, 24]}
-PATH = "WESAD/"
+PATH = "/hpc/group/sta440-f20/WESAD/WESAD/"
 
 STRESS = 2
 AMUSEMENT = 3
 WINDOW = 25
-DOWN_SAMPLING = 14
+DOWN_SAMPLING = 28
 
 
 """
@@ -76,8 +76,7 @@ Example: high_res_data = [0,1,2,3,4,5,6,7], func = np.mean, window = 4, shift = 
 Result: [1.5, 1.5, 3.5, 3.5, 5.5, 5.5, 6.5, 6.5]
 """
 
-
-def roll_apply(high_res_data, func=np.mean, window=1400, shift=175):
+def roll_apply(high_res_data, func=np.mean, window=42000, shift=175):
     assert (window < len(high_res_data))
 
     idx = 0
@@ -137,6 +136,29 @@ def generate_hrv(ibi, sweep=30):
 
 
 """
+This function returns the peaks over the ranges they cover, such that len(input) = len(output). For example, if x were
+given as x = [1,2,4,2,5,1,1,6,1], the output would be [4, 4, 4, 5, 5, 6, 6, 6, 6]
+"""
+
+
+def forward_project_peaks(x):
+    peak_indices = list(find_peaks(x)[0])
+    start = 0
+    peak_idx = 0
+    while peak_idx < len(peak_indices):
+        end_peak = peak_indices[peak_idx]
+        peak_height = x[end_peak]
+
+        if peak_idx == len(peak_indices) - 1:
+            x[start:] = [peak_height for i in range(len(x) - start)]
+        else:
+            x[start:(end_peak + 1)] = [peak_height for i in range(end_peak + 1 - start)]
+        start = end_peak + 1
+        peak_idx = peak_idx + 1
+    return x
+
+
+"""
 This function loads in the pickle file, segments it to the desired sensor, and converts it to a
 data frame, along with an additional column that will help distinguish it by subject when it is
 merged with the rest of the sensor
@@ -153,6 +175,9 @@ def generate_subject_df(file_path, s_id):
             data[SIGNAL][CHEST][m][1771709:1771793] = np.linspace(data[SIGNAL][CHEST][m][1771709],
                                                                   data[SIGNAL][CHEST][m][1771793],
                                                                   1771793 - 1771709)
+        if m in PEAKS:
+            df[m + "_PEAKS"] = forward_project_peaks(list(flatten(data[SIGNAL][CHEST][m])))
+
         df[m] = list(flatten(data[SIGNAL][CHEST][m]))
 
     for m in WRIST_METRICS:
@@ -176,25 +201,24 @@ def generate_subject_df(file_path, s_id):
             df[m + "_EMP4"] = list(df_wrist.iloc[:, 0])
 
     for m in MERGED_METRICS:
+
         if m == "HRV":
-            continue
+            df[m + "_RMSSD"] = roll_apply(df[m], func=lambda x: np.sqrt(np.mean(np.square(np.diff(x)))))
+
         df[m + "_MEAN"] = roll_apply(df[m])
         df[m + "_STDDEV"] = roll_apply(df[m], func=np.std)
-        if m in PEAKS:
-            df[m + "_PEAKS"] = roll_apply(df[m], func=find_peaks)
 
     df[LABEL] = data[LABEL]
     df = df.loc[df[LABEL].isin([STRESS, AMUSEMENT])]
     df[LABEL].replace({STRESS: "Stressed", AMUSEMENT: "Amused"}, inplace=True)
-
     df[SUBJECT] = [s_id for i in range(len(df))]
-
     df = df.iloc[::DOWN_SAMPLING, :]
 
     return df
 
 
-merged_df = generate_subject_df(PATH + "S2/", "S2")
+sid = "S" + str(subjects[0])
+merged_df = generate_subject_df(PATH + sid + "/", sid)
 
 for s in subjects[1:]:
     sid = "S" + str(s)
@@ -202,4 +226,4 @@ for s in subjects[1:]:
     merged_df = merged_df.append(current_subject_df)
 
 
-merged_df.to_csv("merged_down_wesad_10_11_13.csv")
+merged_df.to_csv("merged_down_wesad_25.csv")
