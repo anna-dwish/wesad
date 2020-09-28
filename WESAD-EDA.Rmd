@@ -678,6 +678,14 @@ ggplot() +
 ggplot(S17_merged)+
   geom_line(aes(x = X, y = Resp, color = label))
 ```
+
+# Combined EDA
+```{r}
+# merge data
+wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S14_S15_S16_S17_merged)
+```
+
+
 # Others
 ```{r eval=F}
 ## pseudocode
@@ -704,11 +712,7 @@ nrow(peaks)
 
 ```
 
-```{r}
-# merge data
 
-wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S14_S15_S16_S17_merged)
-```
 
 
 # Model
@@ -752,6 +756,61 @@ glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
 table(glm.pred, wesad$label)
 
 sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+```{r warning=F, message=F}
+# with 10-fold CV
+library(boot)
+set.seed(123)
+glm.fit <- glm(label ~ EDA*Temp + subject, data = wesad, family = binomial)
+cv.glm(wesad, glm.fit, K = 10)$delta
+# first component of delta is MSE from 10-fold CV
+# second component of delta is MSE with a bias correction
+```
+
+### FINAL MODEL
+```{r}
+# Randomly shuffle the data
+# wesad is a merged cvs that contain data for all subjects
+set.seed(1234)
+wesad_random<-wesad[sample(nrow(wesad)),]
+
+#Create 10 equally size folds
+folds <- cut(seq(1,nrow(wesad_random)),breaks=10,labels=FALSE)
+
+# Perform 10 fold cross validation
+for(i in 1:10){
+  
+  # Segement your data by fold using the which() function 
+  test.indices <- which(folds==i,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA*Temp + subject, data = train, family = binomial)
+  
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred <- rep("amused", nrow(test))
+  glm.pred[glm.probs > 0.5] <- "stressed" # if prob > 0.5, predicted label = stressed
+  
+  print(sum(diag(table(glm.pred, test$label)))/nrow(test)) # accuracy
+}
+```
+
+```{r}
+test.indices <- which(folds==1,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA*Temp + subject, data = train, family = binomial)
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+  glm.pred <- rep("amused", nrow(test))
+ 
+  sum(diag(table(glm.pred, test$label)))/nrow(test) # accuracy
 ```
 
 ```{r}
