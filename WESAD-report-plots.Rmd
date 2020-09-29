@@ -31,6 +31,22 @@ wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S1
 
 # EDA Plots
 
+## All EDA plots
+
+```{r all-plots,message=F, fig.width=10, fig.height=4}
+metrics_all = names(wesad)
+
+metrics = metrics_all[-1]
+
+for(i in length(metrics)){
+  p = ggplot(wesad) +
+    geom_histogram(aes_string(x=metrics[i], fill="label"),alpha = 0.6, position = "identity")+
+    facet_wrap(~subject, nrow = 3, scales = "free")
+  print(p)
+}
+```
+
+## Plots of More Useful Classifiers
 ### Chest EDA
 ```{r chest-EDA-plots, fig.width=10, fig.height=4, message=F, echo=F}
 ggplot(wesad) +
@@ -80,9 +96,12 @@ ggplot(wesad) +
   ggsave("~/Desktop/HR_plot.png")
 ```
 
+
 # Models
 
 ### FINAL MODEL
+
+#### NOTE: the final model might be different, depending on EDA / result of forward selection
 
 ```{r}
 # Randomly shuffle the data
