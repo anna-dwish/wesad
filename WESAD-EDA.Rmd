@@ -17,7 +17,7 @@ library(cowplot)
 ```
 
 # S2 Raw Data
-```{r include=F}
+```{r eval=F}
 # load E4 ACC data, sample rate = 32Hz
 # values are in 1/64 g
 S2.E4.ACC <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_E4_Data/ACC.csv",header = F)
@@ -32,7 +32,7 @@ head(S2.E4.ACC)
 nrow(S2.E4.ACC)
 ```
 
-```{r include=F}
+```{r eval=F}
 ggplot(S2.E4.ACC) +
   geom_line(aes(x = time, y = X/64), color = "blue") +
   labs(x = "Time", y = "X, unit in g")
@@ -46,7 +46,7 @@ ggplot(S2.E4.ACC) +
     labs(x = "Time", y = "Z, unit in g")
 ```
 
-```{r fig.width=10, fig.height=4}
+```{r fig.width=10, fig.height=4,eval=F}
 ggplot(S2.E4.ACC) +
   geom_line(aes(x = time, y = X/64), color = "dark blue") +
   geom_line(aes(x = time, y = Y/64), color = "red") + 
@@ -54,8 +54,9 @@ ggplot(S2.E4.ACC) +
   labs(y = "Accelerometer, unit in g",
        title = "Subject 2")
 ```
+Order: base-stress-rest-meditation 1-amusement-meditation II
 
-```{r include=F}
+```{r eval=F}
 # time format is minute.second
 # ignore sRead, fRead
 S2.Truth <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_quest.csv", sep = ";", header = F)
@@ -72,7 +73,7 @@ S2.conditions <- as.data.frame(t(S2.conditions)) %>%
 
 ```
 
-```{r fig.height=5, fig.width=8}
+```{r fig.height=5, fig.width=8,eval=F}
 S2.E4.IBI <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/WESAD/S2/S2_E4_Data/IBI.csv",
                       header = F)
 S2.E4.IBI <- S2.E4.IBI %>%
@@ -133,27 +134,15 @@ plot_grid(p1, p2, nrow = 2)
 
 ```{r S2-temperature-corr, fig.height=3, fig.width=5}
 ggplot(S2_merged, aes(x = Temp, y = TEMP_EMP4)) +
-  geom_point() +
+  geom_point(aes(color=label)) +
   geom_smooth(method = "lm", se = F) +
   labs(x = "Chest Body Temperature", y = "Wrist Body Temperature",
        title = "S2: Wrist vs. Chest Temprature")
 ```
 
 
-```{r S3-temperature-0, fig.height=3, fig.width=5}
-ggplot(S3_merged) +
-  geom_histogram(aes(x = Temp, fill = label)) +
-  labs(title = "S3 Chest Measured Body Temperature") 
-# Note there are abnormally low body tempratures (15.42278 degrees) detected; 
-# 100 observations in the downsampled dataset; all under stressed condition
-```
-
 
 ```{r S3-temperature, fig.height=5, fig.width=8}
-S3_merged <- S3_merged %>%
-  filter(Temp > 30) 
-
- # filter out ~15 degrees body temperature
 
 p3 = ggplot(S3_merged) +
   geom_histogram(aes(x = Temp, fill = label)) +
@@ -164,6 +153,14 @@ p4 = ggplot(S3_merged) +
   labs(title = "S3 Wrist Measured Body Temperature")
 
 plot_grid(p3, p4, nrow = 2)
+```
+
+```{r}
+# Which rows from raw data have wierd temp data??
+S2_S3_raw <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_wesad.csv", header = T)
+ 
+#83 rows, ~ 0.1 second chest sensors malfunctioned
+which(S2_S3_raw$Temp <30)
 ```
 
 
@@ -200,6 +197,7 @@ p8 = ggplot(S3_merged) +
 
 plot_grid(p7,p8)
 ```
+
 ```{r S2-EDA,fig.height=4, fig.width=10}
 p9 = ggplot(S2_merged) +
   geom_histogram(aes(x = EDA, fill = label)) +
@@ -257,11 +255,11 @@ plot_grid(p13,p14, nrow = 2)
 ```
 
 ```{r S2-HR-SRV,fig.height=5, fig.width=8}
-p15 = ggplot(S2_merged) +
+p15 = ggplot(S3_merged) +
   geom_histogram(aes(x = HR_EMP4, fill = label)) +
-  labs(title = "S2 Wrist Heart Rate")
+  labs(title = "S3 Wrist Heart Rate")
 
-p16 = ggplot(S2_merged) +
+p16 = ggplot(S3_merged) +
   geom_histogram(aes(x = HRV, fill = label)) +
   labs(title = "S3 Wrist Heart Rate Variability")
 
@@ -302,7 +300,630 @@ S3_pve <- S3_pr.var/sum(S3_pr.var)
 
 plot(S3_pve, xlab = "Principal Component",
      ylab = "Proportion of Variance Explained", ylim = c(0,1), type = 'b',
-     main = "Principal Component Analysis for Subject 2")
+     main = "Principal Component Analysis for Subject 3")
 ```
+
+# EDA Functions
+
+```{r plot-functions}
+# function to plot distributions of body temp measured at chest and wrist
+get_temp_plots <- function(subject, data){
+  p_temp_1 = ggplot(data) +
+    geom_histogram(aes(x = Temp, fill = label)) +
+    labs(title = paste0(subject," Chest Body Temperature"))
+  
+  p_temp_2 = ggplot(data) +
+    geom_histogram(aes(x = TEMP_EMP4, fill = label)) +
+    labs(title = paste0(subject," Wrist Body Temperature"))
+  
+  plot_grid(p_temp_1, p_temp_2, nrow = 2)
+}
+
+# function to plot wrist v.s. check temperature
+get_temp_corr <- function(subject, data){
+  ggplot(data, aes(x = Temp, y = TEMP_EMP4)) +
+    geom_point(aes(color=label)) +
+    geom_smooth(method = "lm", se = F) +
+    labs(x = "Chest Body Temperature", y = "Wrist Body Temperature",
+         title = paste0(subject," Wrist vs. Chest Temprature" ))
+}
+
+# function to plot distribution of EMG
+get_EMG_plot <- function(subject, data){
+  ggplot(data) +
+    geom_histogram(aes(x = EMG, fill = label)) +
+    labs(title = paste0(subject," Chest EMG"))
+}
+
+# function to plot distribution of ECG
+
+get_ECG_plot <- function(subject, data){
+  ggplot(data) +
+    geom_histogram(aes(x = ECG, fill = label)) +
+    labs(title = paste0(subject," Chest ECG"))
+}
+
+# function to plot distributions of EDA measured at chest and wrist
+get_EDA_plots <- function(subject, data){
+  p_EDA_1 = ggplot(data) +
+    geom_histogram(aes(x = EDA, fill = label)) +
+    labs(title = paste0(subject," Chest EDA"))
+  
+  p_EDA_2 = ggplot(data) +
+    geom_histogram(aes(x = EDA_EMP4, fill = label)) +
+    labs(title = paste0(subject," Wrist EDA"))
+  
+  plot_grid(p_EDA_1,p_EDA_2)
+}
+
+get_EDA_corr <- function(subject, data){
+ggplot(data, aes(x = EDA, y = EDA_EMP4)) +
+  geom_point(aes(color=label)) +
+  geom_smooth(method = "lm", se = F) +
+  labs(x = "Chest EDA", y = "Wrist EDA",
+       title = paste0(subject," Wrist vs Chest EDA"))
+}
+
+# function to plot distribution of respiration
+get_resp_plot <- function(subject, data){
+  ggplot(data) +
+    geom_histogram(aes(x = Resp, fill = label)) +
+    labs(title = paste0(subject," Chest Respiration"))
+}
+
+# function to plot the distribution of heart rate and HRV (SDNN method)
+get_HR_plots <- function(subject, data){
+  p_HR = ggplot(data) +
+    geom_histogram(aes(x = HR_EMP4, fill = label)) +
+    labs(title = paste0(subject," Wrist Heart Rate"))
+  
+  p_HR_time = ggplot(data) +
+    geom_line(aes(x = X, y = HR_EMP4, color = label)) +
+    labs(x = "Time",title = paste0(subject," in Hear Rate"))
+  
+  p_HRV = ggplot(data) +
+  geom_histogram(aes(x = HRV, fill = label)) +
+  labs(title = paste0(subject," Wrist Heart Rate Variability"))
+  
+  plot_grid(p_HR,p_HR_time,p_HRV, nrow = 3)
+}
+
+
+```
+
+# EDA for Subject 4 
+```{r load-data-S4,include=F}
+S4_S5_S6_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_4_5_6.csv", header = T)
+
+S4_S5_S6_merged <- S4_S5_S6_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+summary(S4_S5_S6_merged)
+
+```
+
+```{r S4, eval=F, warning=F,message=F}
+S4_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S4") %>% 
+  select(-subject)
+summary(S4_merged)
+
+get_temp_plots("S4",S4_merged)
+get_temp_corr("S4", S4_merged)
+get_EMG_plot("S4",S4_merged)
+get_ECG_plot("S4", S4_merged)
+get_EDA_plots("S4", S4_merged)
+get_EDA_corr("S4",S4_merged)
+get_resp_plot("S4",S4_merged)
+get_HR_plots("S4",S4_merged)
+```
+
+
+```{r}
+S5_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S5") %>%
+  select(-subject)
+summary(S5_merged)
+
+get_temp_plots("S5",S5_merged)
+get_temp_corr("S5", S5_merged)
+get_EMG_plot("S5",S5_merged)
+get_ECG_plot("S5", S5_merged)
+get_EDA_plots("S5", S5_merged)
+get_EDA_corr("S5",S5_merged)
+get_resp_plot("S5",S5_merged)
+get_HR_plots("S5",S5_merged)
+```
+# EDA for Subject 6
+```{r, message=F, warning=F, echo=F}
+S6_merged <- S4_S5_S6_merged %>%
+  filter(subject == "S6") %>%
+  select(-subject)
+#summary(S6_merged)
+
+get_temp_plots("S6",S6_merged)
+get_temp_corr("S6", S6_merged)
+get_EMG_plot("S6",S6_merged)
+get_ECG_plot("S6", S6_merged)
+get_EDA_plots("S6", S6_merged)
+get_EDA_corr("S6",S6_merged)
+get_resp_plot("S6",S6_merged)
+get_HR_plots("S6",S6_merged)
+```
+
+```{r load-data-S7-S8-S9,include=F}
+S7_S8_S9_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_7_8_9.csv", header = T)
+
+S7_S8_S9_merged <- S7_S8_S9_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+summary(S7_S8_S9_merged)
+```
+
+# EDA for Subject 7 
+```{r S7, message=F, warning=F,echo=F}
+# need to amend this
+S7_merged <- S7_S8_S9_merged %>%
+  filter(subject == "S7") %>% 
+  select(-subject)
+
+summary(S7_merged)
+
+get_temp_plots("S7",S7_merged)
+get_temp_corr("S7", S7_merged)
+get_EMG_plot("S7",S7_merged)
+get_ECG_plot("S7", S7_merged)
+get_EDA_plots("S7", S7_merged)
+get_EDA_corr("S7",S7_merged)
+get_resp_plot("S7",S7_merged)
+get_HR_plots("S7",S7_merged)
+```
+
+# EDA for Subject 8
+
+#### NOTE: Subject had already a rather stressful day, prior to the study.Subject felt rather cold in the room where the stress condition was carried out.
+```{r S8, warning=F, message=F, echo=F}
+S8_merged <- S7_S8_S9_merged %>%
+  filter(subject == "S8") %>% 
+  select(-subject)
+summary(S8_merged)
+
+get_temp_plots("S8",S8_merged)
+get_temp_corr("S8", S8_merged)
+get_EMG_plot("S8",S8_merged)
+get_ECG_plot("S8", S8_merged)
+get_EDA_plots("S8", S8_merged)
+get_EDA_corr("S8",S8_merged)
+get_resp_plot("S8",S8_merged)
+get_HR_plots("S8",S8_merged)
+```
+# EDA for Subject 9
+
+```{r S9, warning=F, message=F,echo=F}
+S9_merged <- S7_S8_S9_merged %>%
+  filter(subject == "S9") %>% 
+  select(-subject)
+summary(S9_merged)
+
+get_temp_plots("S9",S9_merged)
+get_temp_corr("S9", S9_merged)
+get_EMG_plot("S9",S9_merged)
+get_ECG_plot("S9", S9_merged)
+get_EDA_plots("S9", S9_merged)
+get_EDA_corr("S9",S9_merged)
+get_resp_plot("S9",S9_merged)
+get_HR_plots("S9",S9_merged)
+```
+
+```{r load-data-S10-S11-S13,include=F}
+S10_S11_S13_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_10_11_13.csv", header = T)
+
+S10_S11_S13_merged <- S10_S11_S13_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+
+summary(S10_S11_S13_merged)
+```
+# EDA for Subject 10 
+
+```{r S10, warning=F, message=F,echo=F}
+S10_merged <- S10_S11_S13_merged %>%
+  filter(subject == "S10") %>% 
+  select(-subject)
+summary(S10_merged)
+
+get_temp_plots("S10",S10_merged)
+get_temp_corr("S10", S10_merged)
+get_EMG_plot("S10",S10_merged)
+get_ECG_plot("S10", S10_merged)
+get_EDA_plots("S10", S10_merged)
+get_EDA_corr("S10",S10_merged)
+get_resp_plot("S10",S10_merged)
+get_HR_plots("S10",S10_merged)
+```
+
+# EDA for Subject 11
+
+```{r S11, warning=F, message=F,echo=F}
+S11_merged <- S10_S11_S13_merged %>%
+  filter(subject == "S11") %>% 
+  select(-subject)
+summary(S11_merged)
+
+get_temp_plots("S11",S11_merged)
+get_temp_corr("S11", S11_merged)
+get_EMG_plot("S11",S11_merged)
+get_ECG_plot("S11", S11_merged)
+get_EDA_plots("S11", S11_merged)
+get_EDA_corr("S11",S11_merged)
+get_resp_plot("S11",S11_merged)
+get_HR_plots("S11",S11_merged)
+```
+
+# EDA for Subject 13
+
+```{r S13, warning=F, message=F,echo=F}
+S13_merged <- S10_S11_S13_merged %>%
+  filter(subject == "S13") %>% 
+  select(-subject)
+summary(S13_merged)
+
+get_temp_plots("S13",S13_merged)
+get_temp_corr("S13", S13_merged)
+get_EMG_plot("S13",S13_merged)
+get_ECG_plot("S13", S13_merged)
+get_EDA_plots("S13", S13_merged)
+get_EDA_corr("S13",S13_merged)
+get_resp_plot("S13",S13_merged)
+get_HR_plots("S13",S13_merged)
+```
+
+
+```{r load-data-S14-S15-S16-S17,include=F}
+S14_S15_S16_S17_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_14_15_16_17.csv", 
+                                   header = T)
+
+S14_S15_S16_S17_merged <- S14_S15_S16_S17_merged %>%
+  mutate(subject = as.factor(subject),
+         label = as.factor(label))
+
+summary(S14_S15_S16_S17_merged)
+```
+
+# EDA for Subject 14
+
+```{r S14, warning=F, message=F,echo=F}
+S14_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S14") %>% 
+  select(-subject)
+summary(S14_merged)
+
+get_temp_plots("S14",S14_merged)
+get_temp_corr("S14", S14_merged)
+get_EMG_plot("S14",S14_merged)
+get_ECG_plot("S14", S14_merged)
+get_EDA_plots("S14", S14_merged)
+get_EDA_corr("S14",S14_merged)
+get_resp_plot("S14",S14_merged)
+get_HR_plots("S14",S14_merged)
+```
+
+# EDA for Subject 15
+
+```{r S15, warning=F, message=F, echo=F}
+S15_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S15") %>% 
+  select(-subject)
+summary(S15_merged)
+
+get_temp_plots("S15",S15_merged)
+get_temp_corr("S15", S15_merged)
+get_EMG_plot("S15",S15_merged)
+get_ECG_plot("S15", S15_merged)
+get_EDA_plots("S15", S15_merged)
+get_EDA_corr("S15",S15_merged)
+get_resp_plot("S15",S15_merged)
+get_HR_plots("S15",S15_merged)
+```
+
+# EDA for Subject 16
+
+```{r S16, warning=F, message=F, echo=F}
+S16_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S16") %>% 
+  select(-subject)
+summary(S16_merged)
+
+get_temp_plots("S16",S16_merged)
+get_temp_corr("S16", S16_merged)
+get_EMG_plot("S16",S16_merged)
+get_ECG_plot("S16", S16_merged)
+get_EDA_plots("S16", S16_merged)
+get_EDA_corr("S16",S16_merged)
+get_resp_plot("S16",S16_merged)
+get_HR_plots("S16",S16_merged)
+```
+
+# EDA for Subject 17
+
+```{r S17, warning=F, message=F,echo=F}
+S17_merged <- S14_S15_S16_S17_merged %>%
+  filter(subject == "S17") %>% 
+  select(-subject)
+summary(S17_merged)
+
+get_temp_plots("S17",S17_merged)
+get_temp_corr("S17", S17_merged)
+get_EMG_plot("S17",S17_merged)
+get_ECG_plot("S17", S17_merged)
+get_EDA_plots("S17", S17_merged)
+get_EDA_corr("S17",S17_merged)
+get_resp_plot("S17",S17_merged)
+get_HR_plots("S17",S17_merged)
+```
+
+```{r}
+S17_merged %>%
+  filter(X<1500000) %>%
+ggplot() +
+  geom_line(aes(x = X, y = Resp), color = "blue")+
+  labs(title = "Amusement RESP")
+
+S17_merged %>%
+  filter(X>2000000) %>%
+ggplot() +
+  geom_line(aes(x = X/700, y = Resp), color = "red")+
+    labs(title = "Stress RESP")
+
+ggplot(S17_merged)+
+  geom_line(aes(x = X, y = Resp, color = label))
+```
+
+# Combined EDA
+```{r}
+# merge data
+wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S14_S15_S16_S17_merged)
+```
+
+
+# Others
+```{r eval=F}
+## pseudocode
+library(phenofit)
+# DATA is a time series numeric vector in a window of 60s
+peaks <- findpeaks(S17_merged$Resp, minpeakheight=0)
+
+# peals returns a list, but only "X" is useful. X is a data frame
+peaks <- peaks$X
+# the data frame has #rows = #peaks in DATA, and 4 columns
+# first col: "val" = value of the peak
+# second col: "pos" = position / index of the peak
+# third col: "left" = when the cycle begins
+# fourth col: "right" = when the cycle ends
+
+# "left" and "right" are indices of where the cycle begins/ends,
+# but since original data was collected at 700Hz, 
+# every one unit increase in index means an addition 1/700 seconds
+
+peaks$duration <- peaks$right - peaks$left
+
+# breath rate (since window is 60s)
+nrow(peaks)
+
+```
+
+
+
+
+# Model
+
+```{r}
+#library(caret)
+  
+glm.fit <- glm(label ~ EDA + Temp + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(S2_S3_merged$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "stressed"
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(S2_S3_merged))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+```{r}
+glm.fit <- glm(label ~ EDA*Temp + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "stressed"
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+```{r warning=F, message=F}
+# with 10-fold CV
+library(boot)
+set.seed(123)
+glm.fit <- glm(label ~ EDA*Temp + subject, data = wesad, family = binomial)
+cv.glm(wesad, glm.fit, K = 10)$delta
+# first component of delta is MSE from 10-fold CV
+# second component of delta is MSE with a bias correction
+```
+
+### FINAL MODEL
+```{r}
+# Randomly shuffle the data
+# wesad is a merged cvs that contains data for all subjects
+set.seed(1234)
+wesad_random<-wesad[sample(nrow(wesad)),]
+
+# Create 10 equally sized folds
+folds <- cut(seq(1,nrow(wesad_random)),breaks=10,labels=FALSE)
+
+# Perform 10 fold cross validation
+for(i in 1:10){
+  
+  # Segement your data by fold using the which() function 
+  test.indices <- which(folds==i,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA*Temp + subject, data = train, family = binomial)
+  
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred <- rep("amused", nrow(test))
+  glm.pred[glm.probs > 0.5] <- "stressed" # if prob > 0.5, predicted label = stressed
+  
+  print(sum(diag(table(glm.pred, test$label)))/nrow(test)) # accuracy
+}
+
+threshold <- 0.5
+glm.fit <- augment(glm.fit, type.predict = "response")
+
+glm.fit %>%
+  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amussed")) %>%
+  group_by(label, stressed_predict) %>%
+  summarise(n = n()) %>%
+  spread(label, n) %>%
+  kable(format="markdown")
+
+ggplot(glm.fit, aes(d = as.numeric(label), m = .fitted)) + 
+  geom_roc(n.cuts = 0) + 
+  geom_abline(intercept = 0)
+
+roc(glm.fit$label,glm.fit$.fitted)$auc
+
+arm::binnedplot(x=glm.fit$.fitted,y=glm.fit$.resid,
+                xlab="Predicted Probabilities", 
+                main = "Binned Residual vs. Predicted Values")
+
+arm::binnedplot(x=glm.fit$EDA,y=glm.fit$.resid,
+                xlab="EDA", 
+                main = "Binned Residual vs. EDA")
+
+arm::binnedplot(x=glm.fit$Temp,y=glm.fit$.resid,
+                xlab="EDA", 
+                main = "Binned Residual vs. Temp")
+
+glm.fit %>%
+  group_by(subject) %>%
+  summarise(mean_resid = mean(.resid))
+```
+
+```{r}
+test.indices <- which(folds==1,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA*Temp + subject, data = train, family = binomial)
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+  glm.pred <- rep("amused", nrow(test))
+ 
+  sum(diag(table(glm.pred, test$label)))/nrow(test) # accuracy
+```
+
+```{r}
+glm.fit <- glm(label ~ EDA_EMP4 + TEMP_EMP4 + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "stressed"
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+```{r}
+glm.fit <- glm(label ~ EDA_EMP4 + TEMP_EMP4 + subject + HRV, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "Down"stressed
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+```{r}
+glm.fit <- glm(label ~  EDA_EMP4*TEMP_EMP4 + subject, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "Down"stressed
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+```{r}
+glm.fit <- glm(label ~ subject + HRV, data = wesad, family = binomial)
+summary(glm.fit)
+
+glm.probs <- predict(glm.fit, type = "response")
+
+contrasts(wesad$label) # amused = 0, stressed = 1
+
+# want to convert the predicted probabilities to either "amused" or "Down"stressed
+# based on the value of the probability
+
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" #if prob > 0.5, state = stressed
+
+table(glm.pred, wesad$label)
+
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
+```
+
+
+
 
 
