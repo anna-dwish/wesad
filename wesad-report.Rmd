@@ -75,15 +75,71 @@ We accomplished this downsampling by calculating our features over a window of o
 For this paper, we have decided to generate several logistic regression models to better understand and interpret the relationship between these metrics. We began by exploring histograms and scatterplots of our metrics. From this we started with a model with the following predictors: RespiBAN EDA, RespiBAN Body Temperature, and Subject and ran 10-fold cross-validation on our dataset to estimate the test error. Note that it was necessary to include the subject id in order for us to be able to treat our observations as independent. Then we performed forward model selection to check if we missed any other important predictors that can improve the accuracy of prediction. In addition, since both *Empatica E4* wrist sensor and *RespiBan* chest sensor provide readings for EDA and Body Temperature, we can compare which type of sensor is more useful in discriminating between stress and amusement and if wrist data alone is enough. 
 
 # Results
-(report model result, MSE/accuracy)
 
+With the model final model using the predictors outlined previously we were able to achieve an accuracy of 0.8995 when using a 0.5 threshold to categorize the different probabilities outputted by the model.  The coeffcients interpretations for the non-subject variables are as follows: 
+
+1.) For every one unit increase in EDA measurement , the log-odds of the subject being stressed increases by 24.75626
+2.) For every one unit increase in the temperature taken from the chest of the subject, the log-dds of the subject being stressed decreases by 1.14694.
+3.) For every one increase in one of the variables while holding the other constant, the log-odds of the subject being stressed decreases by 0.50790.
+
+This model also provided statistically significant values for all the coefficients used. 
+
+```{r loadmodelandplots}
+model.interaction = readRDS("Model.RDS")
+threshold <- 0.5
+model.interaction <- augment(model.interaction, type.predict = "response")
+
+model.interaction %>%
+  mutate(stressed_predict = if_else(.fitted > threshold, 1, 0)) %>%
+  group_by(label, stressed_predict) %>%
+  summarise(n = n()) %>%
+  spread(label, n) %>%
+  kable(format="markdown")
+```
+
+Here we see a confusion matrix of the predicitions of our model [ADD MORE DETAILS WHEN FINAL MODEL IS DONE]
+
+Below we see the ROC curve which illustrates the diagnostic ability of the model as the discrimination threshold is varied. This plot also allows us to determine an AUC value which is another measure of performance of the model. [ADD DETAILS OF WHAT SPECIFICALLY IS SHOWN IN PLOTS WHEN FINAL MODEL IS DETERMINED]
+
+```{r}
+ggplot(model.interaction, aes(d = as.numeric(label), m = .fitted)) + 
+  geom_roc(n.cuts = 0) + 
+  geom_abline(intercept = 0)
+
+roc(model.interaction$label,model.interaction$.fitted)$auc
+```
+
+Lastly we look at the binned residual plots to as a means of model diagnostics. We are specifically going to look for patterns, assess any possible non-linear trends, and look at the overall magnitude of the residuals in each of the bins. 
+
+```{r}
+arm::binnedplot(x=model.interaction$.fitted,y=model.interaction$.resid,
+                xlab="Predicted Probabilities", 
+                main = "Binned Residual vs. Predicted Probabilities")
+
+arm::binnedplot(x=model.interaction$EDA_CHEST_MEAN,y=model.interaction$.resid,
+                xlab="RespiBAN Electrodermal Activity", 
+                main = "Binned Residual vs. RespiBAN Electrodermal Activity")
+
+arm::binnedplot(x=model.interaction$Temp_CHEST_MEAN,y=model.interaction$.resid,
+                xlab="RespiBAN Body Temperature", 
+                main = "Binned Residuals vs. RespiBAN Body Temperature")
+```
 
 # Discussion
-(compare different models, interpretation of coefficient, answer project goals)
 
+Based on the model created previously and its very high accuracy we can confidently say that sensor data is useful in discriminating between the different conditions. There are some limitations to this answer mainly in the form the data is collect [ELABORATE MORE ON DATA LIMITATIONS HERE]. 
+  
+It is important to note that not all of the sensor data is useful in discriminating between the two states as shown previosuly in the EDA portion of the report. To validate this claim we used a forward selection method on the previous model in order to see if there was any avenue for bettering it by adding more sensor variables. This method used AIC as a metric from which to compare the models generated and it did not change our model. That leads us to conclude that the sensor data that is most useful in determining between stress and amusement are the body temperature of the individual and electrodermal activity taken from the chest. [CHANGE TO SIGNIFICANT PREDICTORS FROM FINAL MODEL]
 
-(model diagonistics)
-AUC Curves or ROC Curves
+Given that there are two types of sensors we also find it interesting to understand whether it not it is necessary to have both sensors to determine. Apart from the model mentioned previously, we also built a model that just takes into consideration the wrist data. Using insights from the EDA portion of the report along with using a forward selection method to determine the best model using AIC as a metric, led to a model that uses electrodermal activity and temperature taken from the wrist. This model overall led to worse results than the model using chest data with an accuracy of [INSERT WRIST MODEL ACCURACY HERE] and an AUC of [INSERT WRIST MODEL AUC HERE. The resulting accuracy may be of use especially in more casual settings but it is not as accurate and may not be of use where the prediction has serious implications. Some possibilities for this can stem from the accuracy of the sensors on the wrist wearable. For example, it is much easier to take on and off the wrist wearable along with it being more subject to movements and other factors that effect the sensors. For more detailed plots regarding confusion matrices, ROC curves, and binned residual plots for this model can be found in the appendix.
+
+Lastly, an important question to answer is the heterogeneity across individuals in the response to stress versus amusement. All humans are different, and reactions to stress and amusement produce different physical reactions. One way to quantify this question is by analyzing the results of our model that uses the specific subject as another variable. By analyzing the different coefficients we saw that many of these coefficients were different by a significant margin. For example, [SHOW EXAMPLE OF MAJOR DIFFERENCE IN COEFFICIENT]. Another we tried answering this question was exploring the different predictors that the model uses and checking how their plots differ across subjects. Our results show that [INSERT INSIGHTS FROM ]
+
+1. Determine whether sensor data are useful in discriminating between stress and amusement conditions
+2. Understand and describe how sensor data are useful in discriminating between stress and amusement
+3. Determine which types and combination(s) of sensor data are most useful in discriminating between stress and amusement
+4. Determine whether we can detect stress (vs amusement) only using the wrist-worn wearable
+5. Quantify the heterogeneity across individuals in the response to stress versus amusement
 
 # Conclusion
 
