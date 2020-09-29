@@ -28,6 +28,12 @@ S2_S3_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad.cs
 wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S14_S15_S16_S17_merged)
 ```
 
+```{r}
+#merged_wesad_data.csv (window: 1 minute, shift: 0.25s), 
+#.._0_5Hz has a window of 2 minutes and shift of 30 seconds, 
+#..._2Hz has a window of 1 minute and shift of 0.5 seconds for sensitivity analysis
+```
+
 
 # EDA Plots
 
