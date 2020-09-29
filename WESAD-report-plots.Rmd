@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, message=FALSE}
 library(tidyverse)
 library(cowplot)
+library(arm)
 ```
 
 ```{r load-data}
@@ -40,9 +41,11 @@ wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S1
 ## All EDA plots
 
 ```{r all-plots,message=F, fig.width=10, fig.height=4}
+wesad <- read.csv("merged_wesad_data.csv")
+
 metrics_all = names(wesad)
 
-metrics = metrics_all[-c(1,27)]
+metrics = metrics_all[-c(1,27)] # drop X and subject
 
 for(i in 1:length(metrics)){
   p = ggplot(wesad) +
@@ -171,5 +174,9 @@ glm.fit %>%
   summarise(mean_resid = mean(.resid))
 ```
 
+# Messing around with model
+```{r}
+
+```
 
 
