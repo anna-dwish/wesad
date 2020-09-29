@@ -1,0 +1,169 @@
+---
+title: "WESAD-PLOTS"
+author: "Alice Liao"
+date: "9/28/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(tidyverse)
+library(cowplot)
+```
+
+```{r load-data}
+# merge data
+S14_S15_S16_S17_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_14_15_16_17.csv", 
+                                   header = T)
+S10_S11_S13_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_10_11_13.csv", header = T)
+S7_S8_S9_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_7_8_9.csv", header = T)
+S4_S5_S6_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad_4_5_6.csv", header = T)
+S2_S3_merged <- read.csv("~/Desktop/2020 Fall/STA440/Case 2/merged_down_wesad.csv", header = T)
+
+wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S14_S15_S16_S17_merged)
+```
+
+
+# EDA Plots
+
+## All EDA plots
+
+```{r all-plots,message=F, fig.width=10, fig.height=4}
+metrics_all = names(wesad)
+
+metrics = metrics_all[-1]
+
+for(i in length(metrics)){
+  p = ggplot(wesad) +
+    geom_histogram(aes_string(x=metrics[i], fill="label"),alpha = 0.6, position = "identity")+
+    facet_wrap(~subject, nrow = 3, scales = "free")
+  print(p)
+}
+```
+
+## Plots of More Useful Classifiers
+### Chest EDA
+```{r chest-EDA-plots, fig.width=10, fig.height=4, message=F, echo=F}
+ggplot(wesad) +
+  geom_histogram(aes(x=EDA, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
+       title = "RespiBan Electrodermal Activity")+
+  ggsave("~/Desktop/RespiBan_EDA_plot.png")
+```
+
+### Wrist EDA
+```{r wrist-EDA-plots, fig.width=10, fig.height=4, message=F, echo=F}
+ggplot(wesad) +
+  geom_histogram(aes(x=EDA_EMP4, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
+       title = "Empatica E4 Electrodermal Activity")+
+  ggsave("~/Desktop/EMP4_EDA_plot.png")
+```
+
+### Chest Temperature
+```{r chest-temp-plots, fig.width=10, fig.height=4, message=F, echo=F}
+ggplot(wesad) +
+  geom_histogram(aes(x=Temp, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = "Body Temperature (°C)",
+       title = "RespiBan Body Temperature")+
+  ggsave("~/Desktop/RespiBan_Temp_plot.png")
+```
+### Wrist Temperature
+```{r wrist-temp-plots, fig.width=10, fig.height=4, message=F, echo=F}
+ggplot(wesad) +
+  geom_histogram(aes(x=TEMP_EMP4, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = "Body Temperature (°C)",
+       title = "Empatica E4 Body Temperature")+
+  ggsave("~/Desktop/EMP4_Temp_plot.png")
+```
+### HR
+
+```{r HR-plots, fig.width=10, fig.height=5, message=F, echo=F}
+ggplot(wesad) +
+  geom_line(aes(x = X, y = HR_EMP4, color = label))+
+  facet_wrap(~subject, nrow = 5, scales = "free")+
+  labs(x = "time",
+       title = "Heart Rate")+
+  ggsave("~/Desktop/HR_plot.png")
+```
+
+
+# Models
+
+### FINAL MODEL
+
+#### NOTE: the final model might be different, depending on EDA / result of forward selection
+
+```{r}
+# Randomly shuffle the data
+# wesad is a merged cvs that contains data for all subjects
+set.seed(1234)
+wesad_random<-wesad[sample(nrow(wesad)),]
+
+# Create 10 equally sized folds
+folds <- cut(seq(1,nrow(wesad_random)),breaks=10,labels=FALSE)
+
+# Perform 10 fold cross validation
+for(i in 1:10){
+  
+  # Segement your data by fold using the which() function 
+  test.indices <- which(folds==i,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA*Temp + subject, data = train, family = binomial)
+  
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred <- rep("amused", nrow(test))
+  glm.pred[glm.probs > 0.5] <- "stressed" # if prob > 0.5, predicted label = stressed
+  
+  print(sum(diag(table(glm.pred, test$label)))/nrow(test)) # accuracy
+}
+
+# model diagnostics
+threshold <- 0.5
+glm.fit <- augment(glm.fit, type.predict = "response")
+
+glm.fit %>%
+  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amussed")) %>%
+  group_by(label, stressed_predict) %>%
+  summarise(n = n()) %>%
+  spread(label, n) %>%
+  kable(format="markdown")
+
+ggplot(glm.fit, aes(d = as.numeric(label), m = .fitted)) + 
+  geom_roc(n.cuts = 0) + 
+  geom_abline(intercept = 0)
+
+roc(glm.fit$label,glm.fit$.fitted)$auc
+
+arm::binnedplot(x=glm.fit$.fitted,y=glm.fit$.resid,
+                xlab="Predicted Probabilities", 
+                main = "Binned Residual vs. Predicted Values")
+
+arm::binnedplot(x=glm.fit$EDA,y=glm.fit$.resid,
+                xlab="EDA", 
+                main = "Binned Residual vs. EDA")
+
+arm::binnedplot(x=glm.fit$Temp,y=glm.fit$.resid,
+                xlab="EDA", 
+                main = "Binned Residual vs. Temp")
+
+glm.fit %>%
+  group_by(subject) %>%
+  summarise(mean_resid = mean(.resid))
+```
+
+
+
