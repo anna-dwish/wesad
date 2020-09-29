@@ -34,53 +34,58 @@ library(kableExtra)
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE)
-ggplot2::theme_set(new = theme_bw())
+# ggplot2::theme_set(new = theme_bw())
 ```
 
 ```{r Chest Electrodermal Activity}
 library(ggplot2)
 library(wesanderson)
-wesad <- read.csv("merged_down_wesad.csv")
-# options(bitmapType='cairo')
-# png("Chest_EDA_Histogram.png")
-
-ggplot(wesad, aes(x=Temp, color=label)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Chest Electrodermal Activity across Subjects") + scale_color_manual(values=wes_palette(n=2, name="Royal1"))
-
-library(dplyr)
-wesad[(wesad$Temp < 28)]
-wesad[which(wesad[,5]<28),]
-wesad
-wesad[which.min(wesad$Temp),]["Temp"] = 30 /63209
-wesad[which.min(wesad$Temp),]
-
-# dev.off()
-# print("Chest EDA Summary")
-# print(summary(wesad$EDA))
-wesad <- read.csv("WESAD/merged_wesad.csv")
-
-
-df.loc[df[0]==var1].index[0]
-wesad[(wesad$Temp < 28)]
-# options(bitmapType='cairo')
+wesad <- read.csv("merged_down_wesad_2_3.csv")
+metrics_string = "EMG	ECG_PEAKS	ECG	EDA	Temp	Resp_PEAKS	Resp	EDA_EMP4	HR_EMP4	HRV	TEMP_EMP4	EMG_RANGE	EMG_MEDIAN	EMG_TEN_PERCENTILE	EMG_NINETY_PERCENTILE	EMG_MEAN	EMG_STDDEV	ECG_MEAN	ECG_STDDEV	EDA_MEAN	EDA_STDDEV	Temp_MEAN	Temp_STDDEV	Resp_MEAN	Resp_STDDEV	EDA_EMP4_MEAN	EDA_EMP4_STDDEV	HR_EMP4_MEAN	HR_EMP4_STDDEV	TEMP_EMP4_MEAN	TEMP_EMP4_STDDEV	HRV_RMSSD	HRV_MEAN	HRV_STDDEV"
 wesad$label <- as.factor(wesad$label)
-print(levels(wesad$label))
-levels(wesad$label)[1] = "Stressed"
-levels(wesad$label)[2] = "Amused"
-wesad$label <- factor(wesad$label, levels=rev(levels(wesad$label)))
-# png("Chest_EDA_Histogram.png")
-ggplot(wesad, aes(x=EDA, color=label)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Chest Electrodermal Activity across Subjects") + scale_color_manual(values=wes_palette(n=2, name="Royal1"))
+levels(wesad$label)
+metrics = strsplit(metrics_string, "\\s+")[[1]]
+ggplot(wesad, aes_string(x="EMG")) + 
+  geom_histogram(data=subset(wesad,label == "Stressed"),fill = "orange", alpha = 0.5) +
+  geom_histogram(data=subset(wesad,label == "Amused"),fill = "blue", alpha = 0.5) +
+  facet_wrap(~ subject, ncol = 2, scales = "free") + 
+  labs(title=paste0("merged_down_wesad_2_3_larger_window")) + 
+  theme(axis.ticks.x = element_blank())
+ggplot(wesad, aes_string(x="EMG", color="label")) +
+  geom_histogram(fill="white", position="dodge") +
+  facet_wrap(~ subject, ncol = 2, scales = "free") + 
+  labs(title=paste0("merged_down_wesad_2_3_larger_window")) + 
+  theme(legend.position="top")
+# ggplot(subset(wesad,cut == "Stress"), aes_string(x="EMG", fill="label")) + geom_histogram(alpha=0.5) + 
+#           facet_wrap(~ subject, ncol = 2, scales = "free") + 
+#           labs(title=paste0("merged_down_wesad_2_3_larger_window")) + 
+#           scale_color_manual(values=wes_palette(n=2, name="Royal1")) + theme(axis.ticks.x = element_blank())
+# for (t in titles){
+#   # wesad_t = paste0("merged_down_wesad", t, ".csv")
+#   wesad <- read.csv("merged_down_wesad_2_3.csv")
+#   for (i in metrics){
+#   print(ggplot(wesad, aes_string(x=i, fill="label")) + geom_histogram() + 
+#           facet_wrap(~ subject, ncol = 2, scales = "free") + 
+#           labs(title=paste0("merged_down_wesad_2_3_larger_window")) + 
+#           scale_color_manual(values=wes_palette(n=2, name="Royal1")) + theme(axis.ticks.x = element_blank())) 
+#   }
+#   break
+# }
+data(diamonds)
 
-# png("Wrist_EDA_Histogram.png")
-ggplot(wesad, aes(EDA_EMP4)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Wristband Electrodermal Activity across Subjects")
-# dev.off()
-print("EMP4 EDA Summary")
-print(summary(wesad$EDA_EMP4))
+ggplot(diamonds,aes(x=price)) + 
 
-# png("Chest_ECG_Histogram.png")
-ggplot(wesad, aes(ECG)) + geom_histogram() + facet_wrap(~ subject, ncol = 2, scales = "free") + labs(title="Chest Electrodermal Activity across Subjects")
-# dev.off()
-print("Chest ECG Summary")
-print(summary(wesad$ECG))
+theme_bw()+
+
+geom_histogram(data=subset(diamonds,cut == "Ideal"),fill = "red", alpha = 0.2) +
+
+geom_histogram(data=subset(diamonds,cut == "Fair"),fill = "blue", alpha = 0.2) +
+
+geom_histogram(data=subset(diamonds,cut == "Premium"),fill = "green", alpha = 0.2)
+ggplot(wesad, aes_string(x="EMG", fill="label")) + geom_histogram() + 
+          facet_wrap(~ subject, ncol = 2, scales = "free") + 
+          labs(title=paste0("merged_down_wesad_2_3_larger_window")) + 
+          scale_color_manual(values=wes_palette(n=2, name="Royal1")) + theme(axis.ticks.x = element_blank())
 ```
 
 
