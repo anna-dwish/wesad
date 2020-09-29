@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from collections import Counter
@@ -37,21 +38,21 @@ metric where the key is a label for the transformation, and value is a function 
 returns a single value
 """
 
-ROLL_APPLY = {"EMG_CHEST": [42000, 175, {"MEAN": np.mean}],
+ROLL_APPLY = {"EMG_CHEST": [42000, 175, {"MEAN": np.mean, "STDDEV": np.std, "MEDIAN": np.median}],
 
-              "ECG_CHEST": [42000, 175, {"MEAN": np.mean}],
+              "ECG_CHEST": [42000, 175, {"MEAN": np.mean, "STDDEV": np.std}],
 
-              "EDA_CHEST": [42000, 175, {"MEAN": np.mean}],
+              "EDA_CHEST": [42000, 175, {"MEAN": np.mean, "STDDEV": np.std, "MAX": np.max}],
 
-              "Temp_CHEST": [42000, 175, {"MEAN": np.mean}],
+              "Temp_CHEST": [42000, 175, {"MEAN": np.mean, "STDDEV": np.std, "MEDIAN": np.median}],
 
-              "Resp_CHEST": [42000, 175, {"MEAN": np.mean}],
+              "Resp_CHEST": [42000, 175, {"MEAN": np.mean, "STDDEV": np.std}],
 
-              "EDA_EMP4": [1440, 6, {"MEAN": np.mean}],
+              "EDA_EMP4": [1440, 6, {"MEAN": np.mean, "STDDEV": np.std, "MAX": np.max}],
 
-              "TEMP_EMP4": [240, 1, {"MEAN": np.mean}],
+              "TEMP_EMP4": [240, 1, {"MEAN": np.mean, "STDDEV": np.std, "MEDIAN": np.median}],
 
-              "BVP_EMP4": [3840, 16, {"MEAN": np.mean}],
+              "BVP_EMP4": [3840, 16, {"MEAN": np.mean, "STDDEV": np.std}],
 
               "HR_EMP4": [240, 1, {"MEAN": np.mean, "STDDEV": np.std}]}
 
@@ -194,6 +195,9 @@ def generate_subject_df(file_path, s_id):
     return df
 
 
+if os.path.exists("status_csv.txt"):
+    os.remove("status_csv.txt")
+
 status_file = open(r"status_csv.txt", "a")
 status_file.write("Subject 2 has begun!\n")
 status_file.close()
@@ -218,7 +222,7 @@ for s in subjects[1:]:
     status_file.write("Subject " + str(s) + " has finished!\n")
     status_file.close()
 
-merged_df_name = "merged_wesad_minimal.csv"
+merged_df_name = "merged_wesad_data.csv"
 merged_df.to_csv(merged_df_name)
 status_file = open(r"status_csv.txt", "a")
 status_file.write("Finished csv: " + merged_df_name)
