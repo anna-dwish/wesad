@@ -36,9 +36,9 @@ wesad <-rbind(S2_S3_merged,S4_S5_S6_merged,S7_S8_S9_merged,S10_S11_S13_merged,S1
 ```{r all-plots,message=F, fig.width=10, fig.height=4}
 metrics_all = names(wesad)
 
-metrics = metrics_all[-1]
+metrics = metrics_all[-c(1,27)]
 
-for(i in length(metrics)){
+for(i in 1:length(metrics)){
   p = ggplot(wesad) +
     geom_histogram(aes_string(x=metrics[i], fill="label"),alpha = 0.6, position = "identity")+
     facet_wrap(~subject, nrow = 3, scales = "free")
