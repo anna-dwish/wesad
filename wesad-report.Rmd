@@ -169,7 +169,7 @@ ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) +
 arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
                 xlab="Predicted Probabilities", 
                 main = "Figure 4: Binned Residual vs. Predicted Probabilities",
-                 cex.main=0.9, cex.lab=0.8)
+                cex.main=0.9, cex.lab=0.8)
 ```
 
 From the ROC curve in Figure 3, we achieved an AUC of approximately 0.96, which indicates that our model has a relatively high accuracy for predicting the response. 
@@ -180,7 +180,7 @@ After performing 10-fold cross validation, the average accuracy rate on the test
 
 ```{r Generate Wrist Model, warning=F, echo=F}
 model.wrist.final <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
-pander(model.wrist.final, caption = "Table 2")
+pander(model.wrist.final, caption = "Wrist Model Output")
 ```
 
 $$
@@ -206,6 +206,8 @@ model.wrist.final %>%
   kable(format="markdown")
 ```
 
+From the confusion matrix, we are again slightly more likely to produce a false positive with this model.
+
 ```{r  Wrist Model Diagnostics ROC, echo=F, message=F, fig.height=3, fig.width=3, fig.align='center'}
 threshold <- 0.5
 ggplot(model.wrist.final, aes(d = as.numeric(label), m = .fitted)) + 
@@ -217,12 +219,11 @@ ggplot(model.wrist.final, aes(d = as.numeric(label), m = .fitted)) +
 ```{r  Wrist Model Diagnostics Binned Plot, echo=F, message=F, fig.height=3, fig.width=6, fig.align='center'}
 arm::binnedplot(x=model.wrist.final$.fitted,y=model.wrist.final$.resid,
                 xlab="Predicted Probabilities", 
-                main = "Figure 6: Binned Residual vs. Predicted Probabilities")
+                main = "Figure 6: Binned Residual vs. Predicted Probabilities",
+                cex.main=0.9, cex.lab=0.8)
 ```
 
-From the confusion matrix, we are again slightly more likely to produce a false positive with this model.
-
-From the ROC curve in Figure 5, we achieved an AUCC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
+From the ROC curve in Figure 5, we achieved an AUC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
 
 For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
 
