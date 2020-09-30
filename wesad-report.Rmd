@@ -109,13 +109,15 @@ From Figure 1 we see body temperatures are different in amused vs stressed state
 
 # Methods
 
-Our first step with this dataset involved aligning the *RespiBAN* data and *Empatica E4* data. For the *RespiBAN* data, each metric was collected at 700Hz. Across all metrics, 700Hz was well above the minimum sampling rate [[8]][Bibliography], [[9]][Bibliography], [[10]][Bibliography], [[11]][Bibliography], which is defined to be the minimum number of samples needed to glean precise feature extractions. For more detail on the minimum sampling rates (MSRs) across the different metrics, please reference Table 1 in the Appendix. Despite these different MSRs, these metrics ultimately needed to be aligned to represent distinct and whole samples. We selected to downsample to 4 Hz, which has been documented as the minimum sampling rate of electrodermal activity (EDA). From our data exploration, EDA appeared to be a key metric in distinguishing stress and amusement. While there is controversy on whether higher sampling rates are required for electrodermal activity [[13]][Bibliography], our exploratory data analysis showed that there were stark differences in the electrodermal activity between the two states for many of the subjects. We also chose this value, as temperature, which has an MSR of 1 Hz, also appeared to be a critical indicator. 
+Our first step with this dataset involved aligning the *RespiBAN* data and *Empatica E4* data. For the *RespiBAN* data, each metric was collected at 700Hz. Across all metrics, 700Hz was well above the minimum sampling rate [[8]][Bibliography], [[9]][Bibliography], [[10]][Bibliography], [[11]][Bibliography], which is defined to be the minimum number of samples needed to glean precise feature extractions. For more detail on the minimum sampling rates (MSRs) across the different metrics, please reference Table 1 in the Appendix. Despite these different MSRs, these metrics ultimately needed to be aligned to represent distinct and whole samples. We selected to downsample to 4 Hz, which has been documented as the minimum sampling rate of electrodermal activity (EDA). From our data exploration, EDA appeared to be a key metric in distinguishing stress and amusement, so we chose to prioritize it when downsampling.
 
-We accomplished this downsampling by calculating our features over a window of one minute with a shift of 0.25 seconds. This was motivated by the Schmidt et. al's paper's window and shift decisions. Please refer to Table 1 in the Appendix for more details on the other metrics we chose to explore, along with their transformations, throughout generating our models. Additionally, please reference Tables 6-9 later on to compare the results of our final chest and wrist models to those with a sampling rate of 2 Hz for sensitivity analysis, which we accomplished with a 60 second window and 0.5 second shift.
+We accomplished this downsampling by calculating our features over a window of one minute with a shift of 0.25 seconds. This was motivated by the Schmidt et. al's paper's window and shift decisions. Please refer to Table 1 in the Appendix for more details on the other metrics and the transformations we explored. Additionally, please reference Tables 6-9 later on to compare the results of our final chest and wrist models to those with a sampling rate of 2 Hz for sensitivity analysis, which we accomplished with a 60 second window and 0.5 second shift.
 
-For this paper, we have decided to generate several logistic regression models to better understand and interpret the relationship between these metrics. We began by exploring histograms and scatterplots of our metrics. From this we started with a model with the following predictors: RespiBAN EDA, RespiBAN Body Temperature, and Subject. We need to include Subject to ensure independence among our samples, as the observations within the same subject were highly correlated. We used confusion matrices, ROC curves, and binned residual plots to evaluate our model assumptions. Finally, we ran 10-fold cross-validation on each predictive model to estimate the test error. 
+For this paper, we have decided to generate several logistic regression models to better understand and interpret the relationship between these metrics. We began by exploring histograms and scatterplots of our metrics. From this we started with a model with the following predictors: RespiBAN EDA, RespiBAN Body Temperature, and Subject. We need to include Subject to ensure independence among our samples, as the observations within the same subject were highly correlated.
 
-When we were exploring models for the wrist data, we had to take a slightly different approach. We intially began with the mean EDA as a predictor, as it perfectly separated the stress and amused condition for many of the subjects (see plot in the Appendix). However, this caused significant model instability and severely inflated our standard errors. For that reason, we explored other statistical features of the raw EDA signal from the wristband and noticed that the standard deviation of the raw signal also performed quite well. For subjects, such as Subjects 2 and 15, that did not have as strong of separation when only using the standard deviation of EDA, we noticed the mean wrist temperature served as a useful metric.
+When we were exploring models for the wrist data, we intially began with the mean EDA as a predictor, as it perfectly separated the stress and amused condition for many of the subjects (see Appendix). However, this caused significant model instability and severely inflated the standard errors. For that reason, we explored other statistical features of EDA and noticed that the standard deviation of EDA also performed quite well. For subjects such as Subjects 2 and 15, who did not have as strong of separation when only using the standard deviation of EDA, we noticed the mean wrist temperature served as a useful metric.
+
+To validate both models, we used confusion matrices, ROC curves, and binned residual plots to evaluate our model assumptions. Finally, we ran 10-fold cross-validation on each predictive model to estimate the test error. Finally, for quantifying heterogeneity, we explored interaction effects with skin temperature.
 
 \newpage
 
@@ -174,8 +176,8 @@ arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
 ```{r Chest Model CV, message=F, echo=F}
 wesad_random<-wesad[sample(nrow(wesad)),]
 folds <- cut(seq(1,nrow(wesad_random)), breaks=10, labels=FALSE)
-accuracies = c()
-random_selection_accuracies <- c()
+chest_accuracies = c()
+chest_random_selection_accuracies <- c()
 for(i in 1:10){
   # Segement your data by fold using the which() function 
   test.indices <- which(folds==i,arr.ind=TRUE)
@@ -192,7 +194,7 @@ for(i in 1:10){
   
   # ensure randomized predictions for each fold with runif function
   set.seed(i)
-  accuracies <- c(accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
+  chest_accuracies <- c(chest_accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
   
   stressed.proportion <- sum(as.numeric(test$label) - 1)/nrow(test)
   
@@ -202,7 +204,7 @@ for(i in 1:10){
   }
   random.guesses = data.frame(actual=(as.numeric(test$label) - 1))
   random.guesses$estimates <- rep(guess,nrow(random.guesses))
-  random_selection_accuracies <- c(random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
+  chest_random_selection_accuracies <- c(chest_random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
 }
 ```
 
@@ -210,7 +212,7 @@ From the ROC curve in Figure 3, we achieved an AUC of approximately 0.96, which 
 
 For the binned residuals vs predicted probabilities in Figure 4, we see that there appears to be a strong cubic curve. While this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the mean EDA, we see that beyond 9 $\mu S$, the residuals go to 0. This is likely due to the perfect separation we saw in our data exploration. Before this, the scatter appears to be random about the 0 line. Finally, the binned residuals against body temperature show that we are generally incurring false negatives on the extreme ends of body temperature and incurring false positives between 33$^\circ$C and 35$^\circ$C.
 
-After performing 10-fold cross validation, the average accuracy rate on the test sets was `r round(mean(accuracies),3)` with the worst accuracy rate being `r round(min(accuracies),3)` and the best accuracy rate being `r round(max(accuracies),3)`. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was `r round(mean(random_selection_accuracies),3)` with the worst accuracy rate being `r round(min(random_selection_accuracies),3)` and the best accuracy rate being `r round(max(random_selection_accuracies),3)`.
+After performing 10-fold cross validation, the average accuracy rate on the test sets was `r round(mean(chest_accuracies),3)` with the worst accuracy rate being `r round(min(chest_accuracies),3)` and the best accuracy rate being `r round(max(chest_accuracies),3)`. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was `r round(mean(chest_random_selection_accuracies),3)` with the worst accuracy rate being `r round(min(chest_random_selection_accuracies),3)` and the best accuracy rate being `r round(max(chest_random_selection_accuracies),3)`.
 
 ```{r Generate Wrist Model, warning=F, echo=F}
 model.wrist.final <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
@@ -260,8 +262,8 @@ arm::binnedplot(x=model.wrist.final$.fitted,y=model.wrist.final$.resid,
 ```{r Wrist Model CV, message=F, echo=F}
 wesad_random<-wesad[sample(nrow(wesad)),]
 folds <- cut(seq(1,nrow(wesad_random)), breaks=10, labels=FALSE)
-accuracies = c()
-random_selection_accuracies <- c()
+wrist_accuracies = c()
+wrist_random_selection_accuracies <- c()
 for(i in 1:10){
   # Segement your data by fold using the which() function 
   test.indices <- which(folds==i,arr.ind=TRUE)
@@ -278,22 +280,22 @@ for(i in 1:10){
   # ensure randomized predictions for each fold with runif function
   
   set.seed(i)
-  accuracies <- c(accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
+  wrist_accuracies <- c(wrist_accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
   
   stressed.proportion <- sum(as.numeric(test$label) - 1)/nrow(test)
   
   random.guesses = data.frame(actual=(as.numeric(test$label) - 1))
   random.guesses$estimates <- runif(nrow(test),0,1)
   random.guesses <- random.guesses %>% mutate(estimates = case_when(estimates < (1 - stressed.proportion) ~ 0, TRUE ~ 1))
-  random_selection_accuracies <- c(random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
+  wrist_random_selection_accuracies <- c(wrist_random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
 }
 ```
 
 From the ROC curve in Figure 5, we achieved an AUC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
 
-For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
+For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could not find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
 
-After performing 10-fold cross validation, the average accuracy rate on the test sets was `r round(mean(accuracies),3)` with the worst accuracy rate being `r round(min(accuracies),3)` and the best accuracy rate being `r round(max(accuracies),3)`. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was `r round(mean(random_selection_accuracies),3)` with the worst accuracy rate being `r round(min(random_selection_accuracies),3)` and the best accuracy rate being `r round(max(random_selection_accuracies),3)`.
+After performing 10-fold cross validation, the average accuracy rate on the test sets was `r round(mean(wrist_accuracies),3)` with the worst accuracy rate being `r round(min(wrist_accuracies),3)` and the best accuracy rate being `r round(max(wrist_accuracies),3)`. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was `r round(mean(wrist_random_selection_accuracies),3)` with the worst accuracy rate being `r round(min(wrist_random_selection_accuracies),3)` and the best accuracy rate being `r round(max(wrist_random_selection_accuracies),3)`.
 
 ## Subject Heterogeneity
 
@@ -303,21 +305,19 @@ final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, f
 
 We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. Please reference Table 10 in the Appendix for this model, which includes mean skin temperature and an interaction term with subject. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
 
-
-
 # Discussion
 
-Our first goal was to determine whether sensor data are useful in discriminating between stress and amusement conditions. Our estimated accuracy from our first model, which was approximately 0.89, was significantly above the accuracy resulting from naively selecting the most frequent class. For this reason, we have strong evidence to believe sensor data are useful in distinguishing these conditions.
+Our first goal was to determine whether sensor data are useful in discriminating between stress and amusement conditions. Our estimated accuracy from our first model, which was approximately `r round(mean(chest_accuracies),3)`, was significantly above the accuracy resulting from naively selecting the most frequent class. For this reason, we have strong evidence to believe sensor data are useful in distinguishing these conditions.
 
 In order to address our second and third goal, which was to determine how and which sensor data are useful in this task, we studied physiological literature discussing stress, conducted feature extraction, and created a logistic regression model motivated by our data analysis. From this, we saw that the mean electrodermal activity and body temperature were significant predictors and interpretted the resulting coefficients.
 
-Next, we examined whether the wristband sensor data alone from the *Empatica E4* was also useful in discriminating between stress and amusement conditions. Ultimately, people are unlikely to wear heavy duty chest sensors everywhere they go, so it is important to determine if a lightweight wristband is as effective. While we faced the limitation of inflated standard errors and convergence challenges that prevented us from using a seemingly useful predictor, we were still able to produce a model with an average accuracy of 0.83. Again, this was significantly above the accuracy resulting from naively selecting the most frequent class. While this accuracy is unsurprisingly slightly lower than that of the chest model, it is clearly still a useful indicator.
+Next, we examined whether the wristband sensor data from the *Empatica E4* was also useful in discriminating between the conditions alone, as people are unlikely to consistently wear heavy duty chest sensors. While we faced the limitation of inflated standard errors and convergence challenges that prevented us from using a seemingly useful predictor, we were still able to produce a model with an average accuracy of `r round(mean(wrist_accuracies),3)`. Again, this was significantly above the accuracy resulting from naively selecting the most frequent class. While this accuracy is unsurprisingly slightly lower than that of the chest model, it is clearly still a useful indicator.
 
-Lastly, an important question to answer is the heterogeneity across individuals in the response to stress versus amusement, as physiological responses to stress can differ significantly from person to person. One way to quantify this difference is by analyzing the results of a model with an interaction effect between the subject and a metric. We noticed in our exploratory data analysis that there was an opposite relationship in wrist temperature for some of the subjects. We quantified this difference by creating another logistic regression model and comparing the expected change in the odds as skin temperature increased for Subject 4 and Subject 6. From this, we saw that increasing the skin temperature was associated with lower odds of being stressed for Subject 4 and higher odds for Subject 6.
+Lastly, an important question to answer is the heterogeneity across individuals in the response to stress versus amusement, as physiological responses to stress can differ significantly from person to person. We noticed in our exploratory data analysis that there was an opposite relationship in wrist temperature for some of the subjects. We quantified this difference by creating another logistic regression model and comparing the expected change in the odds as skin temperature increased for Subject 4 and Subject 6. From this, we saw that higher skin temperatures were associated with lower odds of being stressed for Subject 4 and higher odds for Subject 6.
 
 # Limitations and Looking Ahead
 
-Several of the limitations in the analysis include our inability to cater to each metric's preferred sampling rate, the limited number of affective states, the imprecision in the devices themselves, and the lack of representation from younger and older age groups, and the limited representation of women. For future studies, it will be necessary to examine whether sensor data from wearables is capable of distinguishing other affective states that yield similar physiological responses, such as anger, and to include subjects from a broad range of ethnicities, races, and age groups. Another possible avenue to explore would be testing popular consumer wrist sensors that claim to accurately detect emotion. Finally, a possible improvement to this study could have been conducting nested cross-validation, in which the hyperparameters would be window size/shift, sampling frequency, etc, so a wider range of views on the data are explored.
+Several of the limitations in the analysis include our inability to cater to each metric's preferred sampling rate, the limited number of affective states, the imbalance of conditions in the dataset, the imprecision in the devices themselves, the lack of representation from younger and older age groups, and the limited representation of women. For future studies, it will be necessary to examine whether sensor data from wearables is capable of distinguishing other affective states that yield similar physiological responses, such as anger, and to include subjects from a broad range of ethnicities, races, and age groups. Another possible avenue to explore would be testing popular consumer wrist sensors that claim to accurately detect emotion. Finally, a possible improvement to this study could have been conducting nested cross-validation, in which the hyperparameters would be window size/shift, sampling frequency, etc, so a wider range of views on the data are explored.
 
 \newpage
 
