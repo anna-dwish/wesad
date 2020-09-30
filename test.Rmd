@@ -1,0 +1,35 @@
+---
+title: "TEST"
+author: "Alice Liao"
+date: "9/30/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plotROC)
+```
+
+```{r Load data, include=F}
+wesad <- read.csv("merged_wesad_data.csv")
+
+wesad <- wesad %>%
+  mutate(label = as.factor(label),
+         subject = as.factor(subject))
+```
+
+```{r  Chest Model Diagnostics ROC, echo=F, message=F, fig.height=3, fig.width=3, fig.align='center'}
+wesad <- within(wesad, subject <- relevel(subject, ref = "S2"))
+
+model.chest.final <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad, family = binomial)
+# ROC curve
+ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) + 
+  geom_roc(n.cuts = 0) + 
+  geom_abline(intercept = 0) + labs(title="Chest Model: ROC Curve", x="False Positive Fraction", y="True Positive Fraction", caption="Figure 3") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 14))
+```
+```
+
