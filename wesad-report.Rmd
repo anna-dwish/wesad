@@ -228,14 +228,14 @@ For the binned residuals vs predicted probabilities, we see that there appears t
 
 After performing 10-fold cross validation on our final wrist-only model, the average accuracy rate on the test sets was: 0.852 with the worst accuracy rate being 0.843 and the best accuracy rate being 0.858. In contrast, if we had naively predicted the most frequent class in the test set, your mean accuracy rate was 0.54 with the worst accuracy rate being 0.53 and the best accuracy rate being 0.555.
 
-## Subject Heterogeneity (CHECK SPELLING)
+## Subject Heterogeneity
 
 ```{r Model Diagnostics of Wrist Only Model, warning=F, include=F}
 final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, family = binomial)
 pander(final.model.interaction, caption="Wrist Model Output")
 ```
 
-We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
+We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperatures from the wristband. For example Subject 6 recorded higher skin temperatures during his stress condition while Subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that Subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
 
 
 # Discussion
@@ -361,13 +361,15 @@ ggplot(wesad) +
 ```{r fig.width=6, fig.height=3, message=F, echo=F}
 arm::binnedplot(x=model.chest.final$EDA_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Electrodermal Activity", 
-                main = "Binned Residual vs. RespiBAN Electrodermal Activity")
+                main = "Binned Residual vs. RespiBAN Electrodermal Activity",
+                cex.main=0.9, cex.lab=0.8)
 ```
 
 ```{r fig.width=6, fig.height=3, message=F, echo=F}
 arm::binnedplot(x=model.chest.final$Temp_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Body Temperature", 
-                main = "Binned Residual vs. RespiBANBody Temperature")
+                main = "Binned Residual vs. RespiBANBody Temperature",
+                cex.main=0.9, cex.lab=0.8)
 ```
 
 ### Wrist Binned Residual Plots
