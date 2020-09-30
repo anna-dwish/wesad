@@ -62,37 +62,22 @@ set.seed(1234)
 ggplot(wesad) +
   geom_histogram(aes(x=EDA_CHEST_MEAN, fill=label), alpha = 0.6, position = "identity")+
   facet_wrap(~subject, ncol = 5, scales = "free")+
-  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")), title = "RespiBan Electrodermal Activity")
-
-ggplot(wesad) +
-  geom_histogram(aes(x=EDA_EMP4_STDDEV, fill=label), alpha = 0.6, position = "identity")+
-  facet_wrap(~subject, ncol = 5, scales = "free")+
-  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")), title = "EMP4 Electrodermal Activity")
-
-ggplot(wesad) +
-  geom_histogram(aes(x=EDA_EMP4_MEAN, fill=label), alpha = 0.6, position = "identity")+
-  facet_wrap(~subject, ncol = 5, scales = "free")+
-  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")), title = "EMP4 Electrodermal Activity")
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")), title = "RespiBan - Electrodermal Activity")
 
 ggplot(wesad) +
   geom_histogram(aes(x=Temp_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity") +
   facet_wrap(~subject, ncol = 5, scales = "free") +
-  labs(x = expression("Temperature " (degree*C)), title = "RespiBan Temperature Activity")
+  labs(x = expression("Temperature " (degree*C)), title = "RespiBan - Body Temperature")
 
 ggplot(wesad) +
-  geom_histogram(aes(x=HR_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity") +
-  facet_wrap(~subject, ncol = 5, scales = "free") +
-  labs(x = expression("Temperature " (degree*C)), title = "RespiBan Temperature Activity")
-ggplot(wesad) +
-  geom_histogram(aes(x=TEMP_EMP4_MEDIAN, fill=label),alpha = 0.6, position = "identity") +
-  facet_wrap(~subject, ncol = 5, scales = "free") +
-  labs(x = expression("Temperature " (degree*C)), title = "RespiBan Temperature Activity")
+  geom_histogram(aes(x=EDA_EMP4_STDDEV, fill=label), alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, ncol = 5, scales = "free")+
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")), title = "EMP4 - Electrodermal Activity")
 
-ggplot(wesad, aes(x=EDA_CHEST_MEAN, y=Temp_CHEST_MEAN)) + geom_point() + 
+ggplot(wesad) +
+  geom_histogram(aes(x=TEMP_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity") +
   facet_wrap(~subject, ncol = 5, scales = "free") +
-  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")), 
-       y = expression("Temperature " (degree*C)), 
-       title = "RespiBan Temperature Activity")
+  labs(x = expression("Temperature " (degree*C)), title = "EMP4 - Skin Temperature")
 ```
 
 ## Wrist & Chest Model
@@ -102,39 +87,37 @@ wesad$label <- as.factor(wesad$label)
 levels(wesad$label)[levels(wesad$label)=="Stressed"] <- 1
 levels(wesad$label)[levels(wesad$label)=="Amused"] <- 0
 
-model.interaction <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad, family = binomial)
-
-step.model.interaction <- stepAIC(model.interaction, direction = "forward", trace=FALSE)
-
-print(summary(step.model.interaction))
+model.chest.final <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad, family = binomial)
 ```
 
 ```{r Chest and Wrist Model Diagnostics}
 threshold <- 0.5
-final.model <- augment(model.interaction, type.predict = "response")
+model.chest.final <- augment(model.chest.final, type.predict = "response")
 
-final.model %>%
+model.chest.final %>%
   mutate(stressed_predict = if_else(.fitted > threshold, 1, 0)) %>%
   group_by(label, stressed_predict) %>%
   summarise(n = n()) %>%
   spread(label, n) %>%
   kable(format="markdown")
 
-roc(final.model$label,final.model$.fitted)$auc
+roc(model.chest.final$label,model.chest.final$.fitted)$auc
 
-ggplot(final.model, aes(d = as.numeric(label), m = .fitted)) + 
+ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) + 
   geom_roc(n.cuts = 0) + 
   geom_abline(intercept = 0)
 
-arm::binnedplot(x=final.model$.fitted,y=final.model$.resid,
+roc(model.chest.final$label,model.chest.final$.fitted)$auc
+
+arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
                 xlab="Predicted Probabilities", 
                 main = "Binned Residual vs. Predicted Probabilities")
 
-arm::binnedplot(x=final.model$EDA_CHEST_MEAN,y=final.model$.resid,
+arm::binnedplot(x=model.chest.final$EDA_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Electrodermal Activity", 
                 main = "Binned Residual vs. RespiBAN Electrodermal Activity")
 
-arm::binnedplot(x=final.model$Temp_CHEST_MEAN,y=final.model$.resid,
+arm::binnedplot(x=model.chest.final$Temp_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Body Temperature", 
                 main = "Binned Residual vs. RespiBANBody Temperature")
 ```
@@ -163,13 +146,14 @@ for(i in 1:10){
   accuracies <- c(accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
   
   stressed.proportion <- sum(as.numeric(test$label) - 1)/nrow(test)
+  
   guess = 1
   if (stressed.proportion < 0.5){
     guess = 0
   }
   random.guesses = data.frame(actual=(as.numeric(test$label) - 1))
   random.guesses$estimates <- rep(guess,nrow(random.guesses))
-  random_selection_accuracies <- c(random_selection_accuracies, sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test))
+  random_selection_accuracies <- c(random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
 }
 
 model_one_result = paste0("After performing 10-fold cross validation on our final model, the average accuracy rate on the test sets was: ",
@@ -185,18 +169,14 @@ write(model_one_result,file=MODEL_RESULTS,append=TRUE)
 ```
 
 ```{r Wrist Only Model, warning=F}
-
-model.wrist.base <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
-print(summary(model.wrist.base))
-
-step.model.base <- stepAIC(model.wrist.base, direction = "forward", trace=FALSE)
-
-summary(step.model.base)
+model.wrist.final <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
+step.model.wrist.final <- stepAIC(model.wrist.final, direction = "forward", trace=FALSE)
+summary(step.model.wrist.final)
 ```
 
 ```{r Model Diagnostics of Wrist Only Model, warning=F}
 threshold <- 0.5
-final.model.wrist <- augment(model.wrist.base, type.predict = "response")
+final.model.wrist <- augment(model.wrist.final, type.predict = "response")
 
 final.model.wrist %>%
   mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
@@ -211,17 +191,20 @@ ggplot(final.model.wrist, aes(d = as.numeric(label), m = .fitted)) +
 
 roc(final.model.wrist$label,final.model.wrist$.fitted)$auc
 
-arm::binnedplot(x=final.model.wrist$.fitted,y=model.eda.wrist$.resid,
+arm::binnedplot(x=final.model.wrist$.fitted,y=final.model.wrist$.resid,
                 xlab="Predicted Probabilities", 
                 main = "Binned Residual vs. Predicted Probabilities")
 
-arm::binnedplot(x=final.model.wrist$EDA_EMP4_STDDEV,y=model.eda.wrist$.resid,
-                xlab="Empatica E4 Electrodermal Activity", 
+arm::binnedplot(x=final.model.wrist$EDA_EMP4_STDDEV,y=final.model.wrist$.resid,
+                xlab="Empatica E4 Electrodermal Activity Std Deviation",
                 main = "Binned Residual vs. Electrodermal Activity")
 
+arm::binnedplot(x=final.model.wrist$TEMP_EMP4_MEAN,y=final.model.wrist$.resid,
+                xlab="Empatica E4 Electrodermal Activity", 
+                main = "Binned Residual vs. EMP4 Skin Temperature")
 ```
 
-```{r Wrist Model CV and Accuracy }
+```{r Wrist Model CV and Accuracy, warning=F}
 wesad_random<-wesad[sample(nrow(wesad)),]
 folds <- cut(seq(1,nrow(wesad_random)), breaks=10, labels=FALSE)
 accuracies = c()
@@ -233,7 +216,7 @@ for(i in 1:10){
   train <- wesad_random[-test.indices, ]
   
   # Fitting the linear model using train data
-  glm.fit <- glm(label ~ EDA_EMP4_STDDEV + subject, data = train, family = binomial)
+  glm.fit <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = train, family = binomial)
   
   # Calculating accuracy using test data
   glm.probs <- predict(glm.fit, test, type = "response")
@@ -249,7 +232,7 @@ for(i in 1:10){
   random.guesses = data.frame(actual=(as.numeric(test$label) - 1))
   random.guesses$estimates <- runif(nrow(test),0,1)
   random.guesses <- random.guesses %>% mutate(estimates = case_when(estimates < (1 - stressed.proportion) ~ 0, TRUE ~ 1))
-  random_selection_accuracies <- c(random_selection_accuracies, sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test))
+  random_selection_accuracies <- c(random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
 }
 
 model_wrist_result = paste0("After performing 10-fold cross validation on our final model, the average accuracy rate on the test sets was: ",
@@ -266,30 +249,15 @@ write(model_wrist_result,file=MODEL_RESULTS,append=TRUE)
 
 
 ```{r Model Diagnostics of Wrist Only Model, warning=F}
-threshold <- 0.5
-final.model.wrist <- augment(model.wrist.base, type.predict = "response")
+final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, family = binomial)
+summary(final.model.interaction)
 
-final.model.wrist %>%
-  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
-  group_by(label, stressed_predict) %>%
-  summarise(n = n()) %>%
-  spread(label, n) %>%
-  kable(format="markdown")
+factor.subject6 <- exp(-35.84*0.01 + 83.11*0.01)
+factor.subject4 <- exp(-35.84*0.01 - 28.6*0.01)
 
-ggplot(final.model.wrist, aes(d = as.numeric(label), m = .fitted)) + 
-  geom_roc(n.cuts = 0) + 
-  geom_abline(intercept = 0)
-
-roc(final.model.wrist$label,final.model.wrist$.fitted)$auc
-
-arm::binnedplot(x=final.model.wrist$.fitted,y=model.eda.wrist$.resid,
-                xlab="Predicted Probabilities", 
-                main = "Binned Residual vs. Predicted Probabilities")
-
-arm::binnedplot(x=final.model.wrist$EDA_EMP4_STDDEV,y=model.eda.wrist$.resid,
-                xlab="Empatica E4 Electrodermal Activity", 
-                main = "Binned Residual vs. Electrodermal Activity")
-
+model.interaction.result = paste0("We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of ", round(factor.subject6,3),". However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed multiplies by a factor of ", round(factor.subject4,3))
+print(model.interaction.result)
+write(model.interaction.result,file=MODEL_RESULTS,append=TRUE)
 ```
 
 
