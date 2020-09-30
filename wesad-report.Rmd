@@ -148,7 +148,7 @@ This model also provided statistically significant values for all the coefficien
 
 ```{r Chest Model Diagnostics, echo=F}
 threshold <- 0.5
-model.chest.final <- augment(model.chest.final, type.predict = "response",type.residuals =  "pearson")
+model.chest.final <- augment(model.chest.final, type.predict = "response")
 
 model.chest.final %>%
   mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
@@ -158,7 +158,7 @@ model.chest.final %>%
   kable(format="markdown")
 
 # ROC curve
-p1 = ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) + 
+ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) + 
   geom_roc(n.cuts = 0) + 
   geom_abline(intercept = 0)
 
@@ -166,19 +166,10 @@ p1 = ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) +
 roc(model.chest.final$label,model.chest.final$.fitted)$auc
 
 # Binned Residual Plots
-p2 = arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
+arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
                 xlab="Predicted Probabilities", 
                 main = "Binned Residual vs. Predicted Probabilities")
 
-p3 = arm::binnedplot(x=model.chest.final$EDA_CHEST_MEAN,y=model.chest.final$.resid,
-                xlab="RespiBAN Electrodermal Activity", 
-                main = "Binned Residual vs. RespiBAN Electrodermal Activity")
-
-p4 = arm::binnedplot(x=model.chest.final$Temp_CHEST_MEAN,y=model.chest.final$.resid,
-                xlab="RespiBAN Body Temperature", 
-                main = "Binned Residual vs. RespiBANBody Temperature")
-
-plot_grid(p1,p2,p3,p4,nrow = 2)
 ```
 
 From the confusion matrix, we can see that we are slightly more likely to produce a false positive with this model, i.e. classifying someone as stressed when they are amused. This is likely due to the fact that we have about 1.8 times as many stress-condition samples than amuse-condition samples.
@@ -191,7 +182,7 @@ After performing 10-fold cross validation, the average accuracy rate on the test
 
 ```{r Generate Wrist Model, warning=F, echo=F}
 model.wrist.final <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
-pander(model.wrist.final, caption = "Table 1")
+pander(model.wrist.final, caption = "Table 2")
 ```
 
 $$
@@ -247,13 +238,7 @@ After performing 10-fold cross validation on our final wrist-only model, the ave
 
 ```{r Model Diagnostics of Wrist Only Model, warning=F, echo=F}
 final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, family = binomial)
-summary(final.model.interaction)
-
-factor.subject6 <- exp(-35.84*0.01 + 83.11*0.01)
-factor.subject4 <- exp(-35.84*0.01 - 28.6*0.01)
-factor.subject6
-factor.subject4
-model.interaction.result = paste0("We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of ", round(factor.subject6,3),". However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed multiplies by a factor of ", round(factor.subject4,3))
+pander(final.model.interaction, caption="Table 3")
 ```
 
 We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
@@ -333,6 +318,18 @@ ggplot(wesad) +
   facet_wrap(~subject, nrow = 3, scales = "free")+
   labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
        title = "Empatica E4 Electrodermal Activity")
+```
+
+### Chest Binned Residual Plots
+
+```{r fig.width=6, fig.height=4, message=F, echo=F}
+arm::binnedplot(x=model.chest.final$EDA_CHEST_MEAN,y=model.chest.final$.resid,
+                xlab="RespiBAN Electrodermal Activity", 
+                main = "Binned Residual vs. RespiBAN Electrodermal Activity")
+
+arm::binnedplot(x=model.chest.final$Temp_CHEST_MEAN,y=model.chest.final$.resid,
+                xlab="RespiBAN Body Temperature", 
+                main = "Binned Residual vs. RespiBANBody Temperature")
 ```
 
 ## Bibliography
