@@ -40,6 +40,16 @@ knitr::opts_chunk$set(echo = FALSE,
 ggplot2::theme_set(new = theme_bw())
 ```
 
+```{r load data, include=F}
+wesad <- read.csv("merged_wesad_data.csv")
+
+wesad <- wesad %>%
+  mutate(label = as.factor(label),
+         subject = as.factor(subject))
+
+head(wesad)
+```
+
 # Introduction
 
 In the past few years, the use of wearables has exploded [[1]][Bibliography]. With it, researchers around the globe are exploring how tracking health information via wearables, such as a person's heart rate, can help gain insight into their physical and emotional states [[2]][Bibliography]. Across many different functionalities, such as tracking workouts or monitoring sleep, wearables also present an exciting opportunity to detect stress. In doing so, wearable users today, such as Apple watch user Jason Hiner, have become more cognizant of their emotional state and worked to improve it [[3]][Bibliography]. Given that stress can lead to long term health issues, such as heart disease, high blood pressure, diabetes, and depression or anxiety [[4]][Bibliography], it is critical for us to ensure that wearables can accurately detect stress and distinguish it from other affective states.
@@ -64,7 +74,24 @@ In the Appendix, you can see a full data dictionary in Table 1 that defines the 
 
 ## Exploratory Data Analysis
 
-We plotted the distributions of predictors for each of the subjects and realized for some people, certain predictors serve as perfect separators for amused vs. stressed conditions (i.e. the distributions under the two conditions are significantly different or separated), but that's not always the case. Among all predictors, electrodermal activity (EDA) and temperature are the two physiological signals that appear to be separators for most of the subjects. 
+We plotted the distributions of predictors for each of the subjects and realized for some people, certain metrics serve as perfect separators for amused vs. stressed conditions (i.e. the distributions under the two conditions are significantly different or separated), but that's not always the case. Among all predictors, electrodermal activity (EDA) and temperature are the two physiological signals that appear to be separators for most of the subjects. 
+
+```{r loadEDAgraphs, fig.width=10, fig.height=4, message=F, echo=F}
+# distribution of average body temperature measured at chest (window = 60s, shift = 0.25s)
+ggplot(wesad) +
+  geom_histogram(aes(x=Temp_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = "Body Temperature (??C)",
+       title = "Figure 1: RespiBan Skin Temperature") 
+# distribution of average electrodermal activity measured at wrist (window = 60s, shift = 0.25s)
+ggplot(wesad) +
+  geom_histogram(aes(x=EDA_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
+       title = "Figure 2: RespiBan Electrodermal Activity")
+```
+
+From Figure 1 we see body temperatures are different in amused vs stressed states. For some subjects, such as Subject 10 and 11, the difference is more pronounced in that the distributions of body temperatures are completely separated by the two states. Similarly in Figure 2 we observe different electrodermal acitivities in different emotional states. The histograms also suggest not everyone reacts to amusement and stress in the same way. In general, it seems more sweat (higher EDA) is associated with stress, but Subject 14 could have high EDA but was amaused too. As for temperature, some subjects had higher temperature under stress (e.g. Subject 10 and Subject 15) whereas some had lower temperature when amused (e.g. Subject 11 and Subject 17). Skin temperature and EDA measured at wrist appear to be separators too and their distributions can be found in Appendix.  
 
 # Methods
 
@@ -188,6 +215,26 @@ kable(collapse_rows_dt, escape=F, booktabs = T, align = "llcc", caption = "Data 
 Note that while both sensors also included accelerometer data, it was not included in this analysis as it was only used to align the data points and distinguish the timestamps of the amusement and stress states. Other studies also have considered this variable and ultimately found it not to be useful, as you can read here [[9]][Bibliography].
 
 For our final model, we decided to use linear interpolation to upsample the the electrocardiography *Empatica E4* data [[8]][Bibliography]. For example, say we observe the values $[2.0, 6.0, 12.0, 24.0]$ with 2 Hz as the current sampling rate (i.e. 2 and 6 are observations from the first second), and we wish to upsample to 4 Hz. We would translate these values to $[2.0, 3.33, 4.66, 6.0, 12.0, 16.0, 20.0, 24.0]$. We tested our model's sensitivity to this decison by also using forward projection (in the example above, forward projection would yield $[2.0, 2.0, 6.0, 6.0, 12.0, 12.0, 16.0, 16.0]$) and saw similar results, which is located in Table ** in the Appendix (REMOVE IF FALSE).
+
+## Plots
+
+#### Distributions of EDA and Temperature Measured at Wrist
+
+```{r fig.width=10, fig.height=4, message=F, echo=F}
+# distribution of average body temperature measured at wrist (window = 60s, shift = 0.25s)
+ggplot(wesad) +
+  geom_histogram(aes(x=TEMP_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = "Body Temperature (??C)",
+       title = "Empatica E4 Skin Temperature") 
+
+# distribution of average electrodermal activity measured at wrist (window = 60s, shift = 0.25s)
+ggplot(wesad) +
+  geom_histogram(aes(x=EDA_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
+       title = "Empatica E4 Electrodermal Activity")
+```
 
 ## Bibliography
 
