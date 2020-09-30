@@ -82,13 +82,13 @@ ggplot(wesad) +
   geom_histogram(aes(x=Temp_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity")+
   facet_wrap(~subject, nrow = 3, scales = "free")+
   labs(x = "Body Temperature (??C)",
-       title = "Figure 1: RespiBan Skin Temperature") 
+       title = "Figure 1: RespiBan Average Skin Temperature (Over Windows of 60 Seconds)") 
 # distribution of average electrodermal activity measured at wrist (window = 60s, shift = 0.25s)
 ggplot(wesad) +
   geom_histogram(aes(x=EDA_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity")+
   facet_wrap(~subject, nrow = 3, scales = "free")+
   labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
-       title = "Figure 2: RespiBan Electrodermal Activity")
+       title = "Figure 2: RespiBan Average Electrodermal Activity (Over Windows of 60 Seconds)")
 ```
 
 From Figure 1 we see body temperatures are different in amused vs stressed states. For some subjects, such as Subject 10 and 11, the difference is more pronounced in that the distributions of body temperatures are completely separated by the two states. Similarly in Figure 2 we observe different electrodermal acitivities in different emotional states. The histograms also suggest not everyone reacts to amusement and stress in the same way. In general, it seems more sweat (higher EDA) is associated with stress, but Subject 14 could have high EDA but was amaused too. As for temperature, some subjects had higher temperature under stress (e.g. Subject 10 and Subject 15) whereas some had lower temperature when amused (e.g. Subject 11 and Subject 17). Skin temperature and EDA measured at wrist appear to be separators too and their distributions can be found in Appendix.  
