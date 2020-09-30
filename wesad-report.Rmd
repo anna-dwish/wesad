@@ -109,9 +109,9 @@ From Figure 1 we see body temperatures are different in amused vs stressed state
 
 # Methods
 
-Our first step with this dataset involved aligning the *RespiBAN* data and *Empatica E4* data. For the *RespiBAN* data, each metric was collected at 700Hz. Across all metrics, 700Hz was well above the minimum sampling rate [[8]][Bibliography], [[9]][Bibliography], [[10]][Bibliography], [[11]][Bibliography], which is defined to be the minimum number of samples needed to glean precise feature extractions. For more detail on the minimum sampling rates (MSRs) across the different metrics, please reference Table 5 in the Appendix. Despite these different MSRs, these metrics ultimately needed to be aligned to represent distinct and whole samples. We selected to downsample to 4 Hz, which has been documented as the minimum sampling rate of electrodermal activity (EDA). From our data exploration, EDA appeared to be a key metric in distinguishing stress and amusement. While there is controversy on whether higher sampling rates are required for electrodermal activity [[!!!! FIND REF !!!]], our exploratory data analysis showed that there were stark differences in the electrodermal activity between the two states for many of the subjects. We also chose this value, as temperature, which has an MSR of 1 Hz, also appeared to be a critical indicator. 
+Our first step with this dataset involved aligning the *RespiBAN* data and *Empatica E4* data. For the *RespiBAN* data, each metric was collected at 700Hz. Across all metrics, 700Hz was well above the minimum sampling rate [[8]][Bibliography], [[9]][Bibliography], [[10]][Bibliography], [[11]][Bibliography], which is defined to be the minimum number of samples needed to glean precise feature extractions. For more detail on the minimum sampling rates (MSRs) across the different metrics, please reference Table 1 in the Appendix. Despite these different MSRs, these metrics ultimately needed to be aligned to represent distinct and whole samples. We selected to downsample to 4 Hz, which has been documented as the minimum sampling rate of electrodermal activity (EDA). From our data exploration, EDA appeared to be a key metric in distinguishing stress and amusement. While there is controversy on whether higher sampling rates are required for electrodermal activity [[13]][Bibliography], our exploratory data analysis showed that there were stark differences in the electrodermal activity between the two states for many of the subjects. We also chose this value, as temperature, which has an MSR of 1 Hz, also appeared to be a critical indicator. 
 
-We accomplished this downsampling by calculating our features over a window of one minute with a shift of 0.25 seconds. This was motivated by the Schmidt et. al's paper's window and shift decisions. Please refer to Table 5 in the Appendix for more details on the other metrics we chose to explore, along with their transformations, throughout generating our models. (REMOVE IF ULTIMATELY FALSE) Please reference Table ** later on to compare the results of our final models to those with a sampling rate of 2 Hz for sensitivity analysis, which we accomplished with a 60 second window and 0.5 second shift.
+We accomplished this downsampling by calculating our features over a window of one minute with a shift of 0.25 seconds. This was motivated by the Schmidt et. al's paper's window and shift decisions. Please refer to Table 1 in the Appendix for more details on the other metrics we chose to explore, along with their transformations, throughout generating our models. Additionally, please reference Tables 6-9 later on to compare the results of our final chest and wrist models to those with a sampling rate of 2 Hz for sensitivity analysis, which we accomplished with a 60 second window and 0.5 second shift.
 
 For this paper, we have decided to generate several logistic regression models to better understand and interpret the relationship between these metrics. We began by exploring histograms and scatterplots of our metrics. From this we started with a model with the following predictors: RespiBAN EDA, RespiBAN Body Temperature, and Subject. We need to include Subject to ensure independence among our samples, as the observations within the same subject were highly correlated. We used confusion matrices, ROC curves, and binned residual plots to evaluate our model assumptions. Finally, we ran 10-fold cross-validation on each predictive model to estimate the test error. 
 
@@ -124,7 +124,6 @@ When we were exploring models for the wrist data, we had to take a slightly diff
 ## Chest & Wrist Model
 
 ```{r Generate and Test Wrist and Chest Model, warning=F, echo=F}
-wesad$label <- as.factor(wesad$label)
 wesad <- within(wesad, subject <- relevel(subject, ref = "S2"))
 
 model.chest.final <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad, family = binomial)
@@ -297,9 +296,41 @@ Note that while both sensors also included accelerometer data, it was not includ
 
 For our final model, we decided to use linear interpolation to upsample the the electrocardiography *Empatica E4* data [[8]][Bibliography]. For example, say we observe the values $[2.0, 6.0, 12.0, 24.0]$ with 2 Hz as the current sampling rate (i.e. 2 and 6 are observations from the first second), and we wish to upsample to 4 Hz. We would translate these values to $[2.0, 3.33, 4.66, 6.0, 12.0, 16.0, 20.0, 24.0]$. We tested our model's sensitivity to this decison by also using forward projection (in the example above, forward projection would yield $[2.0, 2.0, 6.0, 6.0, 12.0, 12.0, 16.0, 16.0]$) and saw similar results, which is located in Table ** in the Appendix (REMOVE IF FALSE).
 
+```{r Chest Model Sensitivity, echo=F}
+wesad.2Hz <- read.csv("merged_wesad_data_2Hz.csv")
+wesad.2Hz <- wesad.2Hz %>%
+  mutate(label = as.factor(label),
+         subject = as.factor(subject))
+wesad.2Hz <- within(wesad.2Hz, subject <- relevel(subject, ref = "S2"))
+
+model.chest.2Hz <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad.2Hz, family = binomial)
+pander(model.chest.2Hz, caption = "Chest Model Output: 1 Minute Window, 0.5s Shift")
+
+wesad.05Hz <- read.csv("merged_wesad_data_0_5Hz.csv")
+wesad.05Hz <- wesad.05Hz %>%
+  mutate(label = as.factor(label),
+         subject = as.factor(subject))
+wesad.05Hz <- within(wesad.05Hz, subject <- relevel(subject, ref = "S2"))
+
+model.chest.05Hz <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad.05Hz, family = binomial)
+pander(model.chest.05Hz, caption = "Chest Model Output: 2 Minute Window, 30s Shift")
+```
+ 
+For the chest model with a 1 minute window and 0.5 second shift, the estimates for the mean EDA and mean body temperature coefficients from the *RespiBAN* are nearly identical to our final model. Further, for the chest model with a 2 minute window and 30 second shift, the estimates for the same coefficients were within 2 standard errors of our final model.
+
+```{r Wrist Model Sensitivity, echo=F}
+model.wrist.2Hz <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad.2Hz, family = binomial)
+pander(model.wrist.2Hz, caption = "Wrist Model Output: 1 Minute Window, 0.5s Shift")
+
+model.wrist.05Hz <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad.05Hz, family = binomial)
+pander(model.wrist.05Hz, caption = "Wrist Model Output: 2 Minute Window, 30s Shift")
+```
+
+For the wrist model with a 1 minute window and 0.5 second shift, the estimates for the mean EDA and mean body temperature coefficients from the *Empatica E4* are nearly identical to our final model. However, for the rist model with a 2 minute window and 30 second shift, the estimates for the mean EDA were not within 2 standard errors, and this model did regard mean skin temperature as significant. This may be due to the window size and shift being too large to capture critical changes.
+
 ## Plots
 
-#### Distributions of EDA and Temperature Measured at Wrist
+### Distributions of EDA and Temperature Measured at Wrist
 
 ```{r fig.width=10, fig.height=4, fig.width = 11,message=F, echo=F}
 # distribution of average body temperature measured at wrist (window = 60s, shift = 0.25s)
@@ -363,7 +394,8 @@ arm::binnedplot(x=model.wrist.final$TEMP_EMP4_MEAN,y=model.wrist.final$.resid,
 6. Weintraub, K. (2016, October 13). Wearable health monitors not always reliable, study shows. Retrieved September 20, 2020, from https://www.usatoday.com/story/news/2016/10/12/wearable-health-monitors-not-always-reliable-study-shows/91922858/
 7. Philip Schmidt, Attila Reiss, Robert Duerichen, Claus Marberger, and Kristof Van Laerhoven. 2018. Introducing WESAD, a Multimodal Dataset for Wearable Stress and Affect Detection. In Proceedings of the 20th ACM International Conference on Multimodal Interaction (ICMI '18). Association for Computing Machinery, New York, NY, USA, 400???408. DOI:https://doi.org/10.1145/3242969.3242985
 8. https://www.cs.toronto.edu/~guerzhoy/320/lec/upsampling.pdf
-9. Gjoreski, M., Lu??trek, M., Gams, M., &amp; Gjoreski, H. (2017, August 10). Monitoring stress with a wrist device using context. Retrieved September 27, 2020, from https://www.sciencedirect.com/science/article/pii/S1532046417301855
+9. Gjoreski, M., Lutrek, M., Gams, M., &amp; Gjoreski, H. (2017, August 10). Monitoring stress with a wrist device using context. Retrieved September 27, 2020, from https://www.sciencedirect.com/science/article/pii/S1532046417301855
 10. Mahdiani S, Jeyhani V, Peltokangas M, Vehkaoja A. Is 50 Hz high enough ECG sampling frequency for accurate HRV analysis? Annu Int Conf IEEE Eng Med Biol Soc. 2015;2015:5948-51. doi: 10.1109/EMBC.2015.7319746. PMID: 26737646.
 11. Braithwaite, J. J., Watson, D. G., Jones, R., &amp; Rowe, M. (2013). A Guide for Analysing Electrodermal Activity (EDA) &amp; Skin Conductance Responses (SCRs) for Psychological Experiments. Retrieved September 26, 2020, from https://www.biopac.com/wp-content/uploads/EDA-SCR-Analysis.pdf
 12. Pourmohammadi, S., &amp; Maleki, A. (2020, May 05). Stress detection using ECG and EMG signals: A comprehensive study. Retrieved September 27, 2020, from https://www.sciencedirect.com/science/article/pii/S0169260719320528
+13. https://www.researchgate.net/post/Is_analysis_of_electrodermal_activity_data_possible_with_a_low_sampling_rate_of_only_2_Hz
