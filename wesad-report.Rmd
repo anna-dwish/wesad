@@ -101,14 +101,16 @@ We plotted the distributions of predictors for each of the subjects and realized
 ggplot(wesad) +
   geom_histogram(aes(x=Temp_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity")+
   facet_wrap(~subject, nrow = 3, scales = "free")+
-  labs(x = "Body Temperature (??C)",
-       title = "Figure 1: RespiBan Average Skin Temperature (Over Windows of 60 Seconds)") 
+  labs(x = expression("Body Temperature " (degree*C)),
+       title = "RespiBan Average Skin Temperature (Over Windows of 60 Seconds)",
+       caption="Figure 1") + theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 18))
 # distribution of average electrodermal activity measured at wrist (window = 60s, shift = 0.25s)
 ggplot(wesad) +
   geom_histogram(aes(x=EDA_CHEST_MEAN, fill=label),alpha = 0.6, position = "identity")+
   facet_wrap(~subject, nrow = 3, scales = "free")+
   labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
-       title = "Figure 2: RespiBan Average Electrodermal Activity (Over Windows of 60 Seconds)")
+       title = "RespiBan Average Electrodermal Activity (Over Windows of 60 Seconds)",
+       caption="Figure 2") + theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 18))
 ```
 
 From Figure 1 we see body temperatures are different in amused vs stressed states. For some subjects, such as Subject 10 and 11, the difference is more pronounced in that the distributions of body temperatures are completely separated by the two states. Similarly in Figure 2 we observe different electrodermal acitivities in different emotional states. The histograms also suggest not everyone reacts to amusement and stress in the same way. In general, it seems more sweat (higher EDA) is associated with stress, but Subject 14 could have high EDA but was amaused too. As for temperature, some subjects had higher temperature under stress (e.g. Subject 10 and Subject 15) whereas some had lower temperature when amused (e.g. Subject 11 and Subject 17). Skin temperature and EDA measured at wrist appear to be separators too and their distributions can be found in Appendix.  
@@ -123,6 +125,8 @@ For this paper, we have decided to generate several logistic regression models t
 
 When we were exploring models for the wrist data, we had to take a slightly different approach. We intially began with the mean EDA as a predictor, as it perfectly separated the stress and amused condition for many of the subjects (see plot INSERT HERE DONT FORGET in the Appendix). However, this caused significant model instability and severely inflated our standard errors. For that reason, we explored other statistical features of the raw EDA signal from the wristband and noticed that the standard deviation of the raw signal also performed quite well. For subjects, such as subjects 2 and 15, that did not have as strong of separation when only using the standard deviation of EDA, we noticed the mean wrist temperature served as a useful metric.
 
+\newpage
+
 # Results
 
 ## Chest & Wrist Model
@@ -136,8 +140,10 @@ pander(model.chest.final, caption = "Table 1")
 ```
 
 $$
+\begin{aligned}
 log(\frac{P_i(Stress)}{1 - P_i(Stress)}) = \beta_0 +  \beta_1\overline{EDA_i}^{RB} + \beta_2\overline{TEMP_i}^{RB} + \Sigma_{j \in S}\beta_{j}I(Subject = Subject_j) \\
 S = \{3,4,...,11,13,...17\}
+\end{aligned}
 $$
 
 Note that the $RB$ superscipt indicates that these measures came from the RespiBAN, and the baseline subject for comparison was Subject 2.
@@ -146,37 +152,39 @@ For every 0.1 $\mu s$ increase in EDA from the RespiBAN, we expect that the odds
 
 This model also provided statistically significant values for all the coefficients used. 
 
-```{r Chest Model Diagnostics, echo=F}
+```{r Chest Model Diagnostics CF Matrix, echo=F}
 threshold <- 0.5
 model.chest.final <- augment(model.chest.final, type.predict = "response")
 
 model.chest.final %>%
-  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
-  group_by(label, stressed_predict) %>%
+  mutate(Chest = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
+  group_by(label, Chest) %>%
   summarise(n = n()) %>%
   spread(label, n) %>%
   kable(format="markdown")
+```
 
+```{r  Chest Model Diagnostics ROC, echo=F, message=F, fig.height=3, fig.width=3, fig.align='center'}
 # ROC curve
 ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) + 
   geom_roc(n.cuts = 0) + 
-  geom_abline(intercept = 0)
+  geom_abline(intercept = 0) + labs(title="Chest Model: ROC Curve", x="False Positive Fraction", y="True Positive Fraction", caption="Figure 3") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 14))
+```
 
-# AUC
-roc(model.chest.final$label,model.chest.final$.fitted)$auc
-
+```{r  Chest Model Diagnostics Binned Residuals, echo=F, message=F, fig.height=4, fig.width=6, fig.align='center'}
 # Binned Residual Plots
 arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
                 xlab="Predicted Probabilities", 
-                main = "Binned Residual vs. Predicted Probabilities")
+                main = "Figure 4: Binned Residual vs. Predicted Probabilities")
 
 ```
 
 From the confusion matrix, we can see that we are slightly more likely to produce a false positive with this model, i.e. classifying someone as stressed when they are amused. This is likely due to the fact that we have about 1.8 times as many stress-condition samples than amuse-condition samples.
 
-From the ROC curve, we achieved an AOC of approximately 0.96, which indicates that our model has a relatively high accuracy for predicting the response. 
+From the ROC curve in Figure 3, we achieved an AOC of approximately 0.96, which indicates that our model has a relatively high accuracy for predicting the response. 
 
-For the binned residuals vs predicted probabilities, we see that there appears to be a strong cubic curve. While this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision. Instead, we believe there are external factors that these metrics could not capture in this model. When examining the binned residuals against the mean EDA, we see that beyond 9 $\mu s$, the residuals go to 0. This is likely due to the perfect separation we saw in our data exploration. Before this, the scatter appears to be random about the 0 line. Finally, the binned residuals against body temperature show that we are generally incurring false negatives on the extreme ends of body temperature and incurring false positives between 33$^\circ$C and 35$^\circ$C (FIX INTERP)
+For the binned residuals vs predicted probabilities in Figure 4, we see that there appears to be a strong cubic curve. While this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the mean EDA, we see that beyond 9 $\mu s$, the residuals go to 0. This is likely due to the perfect separation we saw in our data exploration. Before this, the scatter appears to be random about the 0 line. Finally, the binned residuals against body temperature show that we are generally incurring false negatives on the extreme ends of body temperature and incurring false positives between 33$^\circ$C and 35$^\circ$C.
 
 After performing 10-fold cross validation, the average accuracy rate on the test sets was 0.894 with the worst accuracy rate being 0.889 and the best accuracy rate being 0.899. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was 0.641 with the worst accuracy rate being 0.634 and the best accuracy rate being 0.648.
 
@@ -186,51 +194,47 @@ pander(model.wrist.final, caption = "Table 2")
 ```
 
 $$
+\begin{aligned}
 log(\frac{P_i(Stress)}{1 - P_i(Stress)}) = \beta_0 +  \beta_1 * SD(EDA_i)^{E4} + \beta_2*\overline{TEMP_i}^{E4} + \Sigma_{j \in S}\beta_{j}*I(Subject = Subject_j) \\
 S = \{3,4,...,11,13,...17\}
+\end{aligned}
 $$
 
 Note that the $E4$ superscipt indicates that these measures came from the *Empatica E4* wristband, and we have kept the same baseline with Subject 2. 
 
 For every 0.1 $\mu s$ increase in standard deviation of the EDA from the *Empatica E4*, we expect that the odds that the subject is stressed multiplies by a factor of `r round(exp(3.106743),3)`. For every 0.01 degree Celsius increase in skin temperature, we predict that the likelihood the subject is stressed decreases by a factor of `r round(exp(0.06455 * 0.01),3)`. Again, we will not be interpreting the subject coefficients per the aforementioned reason.
 
-```{r  Wrist Model Diagnostics, echo=F, message=F, fig.height=6, fig.width=5}
+```{r  Wrist Model Diagnostics CF Matrix, echo=F, message=F}
 threshold <- 0.5
-model.wrist.final <- augment(model.wrist.final, type.predict = "response",type.residuals =  "pearson")
+model.wrist.final <- augment(model.wrist.final, type.predict = "response")
 
 model.wrist.final %>%
-  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
-  group_by(label, stressed_predict) %>%
+  mutate(Wrist = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
+  group_by(label, Wrist) %>%
   summarise(n = n()) %>%
   spread(label, n) %>%
   kable(format="markdown")
+```
 
-roc(model.wrist.final$label,model.wrist.final$.fitted)$auc
-
+```{r  Wrist Model Diagnostics ROC, echo=F, message=F, fig.height=3, fig.width=3, fig.align='center'}
+threshold <- 0.5
 ggplot(model.wrist.final, aes(d = as.numeric(label), m = .fitted)) + 
   geom_roc(n.cuts = 0) + 
-  geom_abline(intercept = 0)
+  geom_abline(intercept = 0) + labs(title="Wrist Model: ROC Curve", x="False Positive Fraction", y="True Positive Fraction", caption="Figure 5") +
+  theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 14))
+```
 
-roc(model.wrist.final$label,model.wrist.final$.fitted)$auc
-
+```{r  Wrist Model Diagnostics Binned Plot, echo=F, message=F, fig.height=4, fig.width=6, fig.align='center'}
 arm::binnedplot(x=model.wrist.final$.fitted,y=model.wrist.final$.resid,
                 xlab="Predicted Probabilities", 
-                main = "Binned Residual vs. Predicted Probabilities")
-
-arm::binnedplot(x=model.wrist.final$EDA_EMP4_STDDEV,y=model.wrist.final$.resid,
-                xlab="Standard Deviation of Electrodermal Activity", 
-                main = "Binned Residual vs. EMP4 Electrodermal Activity")
-
-arm::binnedplot(x=model.wrist.final$TEMP_EMP4_MEAN,y=model.wrist.final$.resid,
-                xlab="Mean Skin Temperature", 
-                main = "Binned Residual vs. EMP4 Skin Temperature")
+                main = "Figure 6: Binned Residual vs. Predicted Probabilities")
 ```
 
 From the confusion matrix, we are again slightly more likely to produce a false positive with this model.
 
-From the ROC curve, we achieved an AOC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
+From the ROC curve in Figure 5, we achieved an AOC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
 
-For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
+For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
 
 After performing 10-fold cross validation on our final wrist-only model, the average accuracy rate on the test sets was: 0.852 with the worst accuracy rate being 0.843 and the best accuracy rate being 0.858. In contrast, if we had naively predicted the most frequent class in the test set, your mean accuracy rate was 0.54 with the worst accuracy rate being 0.53 and the best accuracy rate being 0.555.
 
@@ -258,42 +262,86 @@ Lastly, an important question to answer is the heterogeneity across individuals 
 
 Several of the limitations in the analysis include our inability to cater to each metric's preferred sampling rate, the limited number of affective states, the imprecision in the devices themselves, and the lack of representation from younger and older age groups, and the limited representation of women. For future studies, it will be necessary to examine whether sensor data from wearables is capable of distinguishing other affective states that yield similar physiological responses, such as anger, and to include subjects from a broad range of ethnicities, races, and age groups. Another possible avenue to explore would be testing popular consumer wrist sensors that claim to accurately detect emotion. Finally, a possible improvement to this study could have been conducting nested cross-validation, in which the hyperparameters would be window size/shift, sampling frequency, etc, so a wider range of views on the data are explored.
 
+\newpage
+
 # Appendix
 
 ## Tables
 
 ```{r Data Dictionary, eval = TRUE, echo=F}
-collapse_rows_dt <- data.frame(Metric = c(rep("ECG (mV)", 3), rep("EDA ($\\mu$s)", 2), rep("EMG (mV)", 6), rep("Temp (C$^\\circ$)", 4),
-                                      rep("Resp ($\\%$)", 3), rep("BVP", 4), rep("EDA ($\\mu$s)", 2), rep("Temp (C$^\\circ$)", 2)),
-                               Description = linebreak(c(rep("Electrocardiography: 700 Hz", 3), 
-                                                         rep("Electrodermal Activity: 700 Hz", 2), 
-                                                         rep("Electromyography: 700 Hz", 6),
-                                                         rep("Body Temperature: 700 Hz", 4), 
-                                                         rep("Respiration: 700 Hz", 3), 
+collapse_rows_dt <- data.frame(Metric = c(rep("ECG (mV)", 2),
+                                          rep("EDA ($\\mu$s)", 3),
+                                          rep("EMG (mV)", 3),
+                                          rep("Temp (C$^\\circ$)", 3),
+                                          rep("Resp ($\\%$)", 2),
+                                          rep("BVP", 4),
+                                          rep("EDA ($\\mu$s)", 3),
+                                          rep("Temp (C$^\\circ$)", 3)))
+collapse_rows_dt2 <- data.frame(Description = c(rep("Electrocardiography: 700 Hz", 2),
+                                                         rep("Electrodermal Activity: 700 Hz", 3),
+                                                         rep("Electromyography: 700 Hz", 3),
+                                                         rep("Body Temperature: 700 Hz", 3),
+                                                         rep("Respiration: 700 Hz", 2),
+                                                         rep("Blood Volume Pulse: 64 Hz", 4),
+                                                         rep("Electrodermal Activity: 4 Hz", 3),
+                                                         rep("Skin Temperature: 4 Hz", 3)))
+nrow(collapse_rows_dt)
+nrow(collapse_rows_dt2)
+
+collapse_rows_dt <- data.frame(Metric = c(rep("ECG (mV)", 2), rep("EDA ($\\mu$s)", 3), rep("EMG (mV)", 3), rep("Temp (C$^\\circ$)", 3),
+                                      rep("Resp ($\\%$)", 2), rep("BVP", 4), rep("EDA ($\\mu$s)", 3), rep("Temp (C$^\\circ$)", 3)),
+                               Description = linebreak(c(rep("Electrocardiography: 700 Hz", 2), 
+                                                         rep("Electrodermal Activity: 700 Hz", 3), 
+                                                         rep("Electromyography: 700 Hz", 3),
+                                                         rep("Body Temperature: 700 Hz", 3), 
+                                                         rep("Respiration: 700 Hz", 2), 
                                                          rep("Blood Volume Pulse: 64 Hz", 4), 
-                                                         rep("Electrodermal Activity: 4 Hz", 2), 
-                                                         rep("Skin Temperature: 4 Hz", 2))),
-                               MSR = linebreak(c(rep("50 Hz", 3), 
-                                                         rep("4 Hz", 2), 
-                                                         rep("30 Hz", 6),
-                                                         rep("1 Hz", 4), 
-                                                         rep("10 Hz", 3), 
+                                                         rep("Electrodermal Activity: 4 Hz", 3), 
+                                                         rep("Skin Temperature: 4 Hz", 3))),
+                               MSR = linebreak(c(rep("50 Hz", 2), 
+                                                         rep("4 Hz", 3), 
+                                                         rep("30 Hz", 3),
+                                                         rep("1 Hz", 3), 
+                                                         rep("10 Hz", 2), 
                                                          rep("1 Hz (HR)", 4), 
-                                                         rep("4 Hz", 2), 
-                                                         rep("1 Hz", 2))),
-                               Features = linebreak(c("Mean", "Std Deviation", "Peaks", 
-                                        "Mean" , "Std Deviation", 
-                                        "Mean", "Std Deviation", "Range", "Median", "10th Percentile", "90th Percentile", 
-                                        "Mean", "Std Deviation", "Range", "Median", 
-                                        "Mean",  "Std Deviation", "Peaks", 
-                                        "Mean", "Std Deviation", "Heart Rate Variability", "RMSSD of HRV",
-                                        "Mean", "Std Deviation", 
-                                        "Mean", "Std Deviation")))
+                                                         rep("4 Hz", 3), 
+                                                         rep("1 Hz", 3))),
+                               Features = linebreak(c("Mean", "Std Deviation", 
+                                        "Mean" , "Std Deviation", "Max",
+                                        "Mean", "Std Deviation", "Median", 
+                                        "Mean", "Std Deviation", "Median", 
+                                        "Mean",  "Std Deviation", 
+                                        "Mean", "Std Deviation", "HR Mean", "HR Std Deviation",
+                                        "Mean", "Std Deviation", "Max", 
+                                        "Mean", "Std Deviation", "Median")))
 kable(collapse_rows_dt, escape=F, booktabs = T, align = "llcc", caption = "Data Dictionary") %>%
   kable_styling(latex_options = c("hold_position")) %>% 
-  group_rows(index = c("RespiBAN Chest Sensor" = 18, "Empatica E4 Wrist Sensor" = 8)) %>%
+  group_rows(index = c("RespiBAN Chest Sensor" = 13, "Empatica E4 Wrist Sensor" = 10)) %>%
   column_spec(1, bold=T) %>%
   collapse_rows(columns = 1:3, latex_hline = "major", valign = "middle")
+
+# nrow(collapse_rows_dt)
+#                                # MSR = linebreak(c(rep("50 Hz", 2), 
+#                                #                           rep("4 Hz", 3), 
+#                                #                           rep("30 Hz", 3),
+#                                #                           rep("1 Hz", 3), 
+#                                #                           rep("10 Hz", 2), 
+#                                #                           rep("1 Hz (HR)", 4), 
+#                                #                           rep("4 Hz", 3), 
+#                                #                           rep("1 Hz", 3))),
+#                                # Features = linebreak(c("Mean", "Std Deviation", 
+#                                #                        "Mean" , "Std Deviation", "Max",
+#                                #                        "Mean", "Std Deviation",  "Median",
+#                                #                        "Mean", "Std Deviation", "Median", 
+#                                #                        "Mean",  "Std Deviation", 
+#                                #                        "Mean", "Std Deviation", "HR Mean", "HR Std Deviation",
+#                                #                        "Mean", "Std Deviation", "Max",
+#                                #                        "Mean", "Std Deviation", "Median")))
+# kable(collapse_rows_dt, escape=F, booktabs = T, align = "llcc", caption = "Data Dictionary") %>%
+#   kable_styling(latex_options = c("hold_position")) %>% 
+#   group_rows(index = c("RespiBAN Chest Sensor" = 13, "Empatica E4 Wrist Sensor" = 10)) %>%
+#   column_spec(1, bold=T) %>%
+#   collapse_rows(columns = 1:3, latex_hline = "major", valign = "middle")
 ```
 
 Note that while both sensors also included accelerometer data, it was not included in this analysis as it was only used to align the data points and distinguish the timestamps of the amusement and stress states. Other studies also have considered this variable and ultimately found it not to be useful, as you can read here [[9]][Bibliography].
@@ -309,7 +357,7 @@ For our final model, we decided to use linear interpolation to upsample the the 
 ggplot(wesad) +
   geom_histogram(aes(x=TEMP_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity")+
   facet_wrap(~subject, nrow = 3, scales = "free")+
-  labs(x = "Body Temperature (??C)",
+  labs(x = expression("Body Temperature " (degree*C)),
        title = "Empatica E4 Skin Temperature") 
 
 # distribution of average electrodermal activity measured at wrist (window = 60s, shift = 0.25s)
@@ -335,9 +383,25 @@ arm::binnedplot(x=model.chest.final$EDA_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Electrodermal Activity", 
                 main = "Binned Residual vs. RespiBAN Electrodermal Activity")
 
+```
+
+```{r fig.width=6, fig.height=4, message=F, echo=F}
 arm::binnedplot(x=model.chest.final$Temp_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Body Temperature", 
                 main = "Binned Residual vs. RespiBANBody Temperature")
+```
+### Wrist Binned Residual Plots
+
+```{r fig.width=6, fig.height=4, message=F, echo=F}
+arm::binnedplot(x=model.wrist.final$EDA_EMP4_STDDEV,y=model.wrist.final$.resid,
+                xlab="Standard Deviation of Electrodermal Activity", 
+                main = "Binned Residual vs. EMP4 Electrodermal Activity")
+```
+
+```{r fig.width=6, fig.height=4, message=F, echo=F}
+arm::binnedplot(x=model.wrist.final$TEMP_EMP4_MEAN,y=model.wrist.final$.resid,
+                xlab="Mean Skin Temperature", 
+                main = "Binned Residual vs. EMP4 Skin Temperature")
 ```
 
 ## Bibliography
