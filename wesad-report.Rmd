@@ -239,7 +239,7 @@ After performing 10-fold cross validation on our final wrist-only model, the ave
 
 ## Subject Heterogeneity (CHECK SPELLING)
 
-```{r Model Diagnostics of Wrist Only Model, warning=F, echo=F}
+```{r Model Diagnostics of Wrist Only Model, warning=F, include=F}
 final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, family = binomial)
 summary(final.model.interaction)
 
@@ -313,7 +313,7 @@ For our final model, we decided to use linear interpolation to upsample the the 
 
 #### Distributions of EDA and Temperature Measured at Wrist
 
-```{r fig.width=10, fig.height=4, message=F, echo=F}
+```{r fig.width=10, fig.height=4, fig.width = 11,message=F, echo=F}
 # distribution of average body temperature measured at wrist (window = 60s, shift = 0.25s)
 ggplot(wesad) +
   geom_histogram(aes(x=TEMP_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity")+
@@ -326,7 +326,15 @@ ggplot(wesad) +
   geom_histogram(aes(x=EDA_EMP4_MEAN, fill=label),alpha = 0.6, position = "identity")+
   facet_wrap(~subject, nrow = 3, scales = "free")+
   labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
-       title = "Empatica E4 Electrodermal Activity")
+       title = "Empatica E4 Mean Electrodermal Activity")
+
+# distribution of sd of electrodermal activity measured at wrist (window = 60s, shift = 0.25s)
+ggplot(wesad) +
+  geom_histogram(aes(x=EDA_EMP4_STDDEV, fill=label),alpha = 0.6, position = "identity")+
+  facet_wrap(~subject, nrow = 3, scales = "free")+
+  labs(x = expression(paste("Electrodermal Activity (",mu,"S)")),
+       title = "Empatica E4 Standard Deviation of Electrodermal Activity")
+
 ```
 
 ## Bibliography
