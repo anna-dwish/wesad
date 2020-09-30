@@ -171,11 +171,46 @@ arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
                 cex.main=0.9, cex.lab=0.8)
 ```
 
+```{r Chest Model CV, message=F, echo=F}
+wesad_random<-wesad[sample(nrow(wesad)),]
+folds <- cut(seq(1,nrow(wesad_random)), breaks=10, labels=FALSE)
+accuracies = c()
+random_selection_accuracies <- c()
+for(i in 1:10){
+  # Segement your data by fold using the which() function 
+  test.indices <- which(folds==i,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = train, family = binomial)
+  
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred <- rep("Amused", nrow(test))
+  glm.pred[glm.probs > 0.5] <- "Stressed" # if prob > 0.5, predicted label = stressed
+  
+  # ensure randomized predictions for each fold with runif function
+  set.seed(i)
+  accuracies <- c(accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
+  
+  stressed.proportion <- sum(as.numeric(test$label) - 1)/nrow(test)
+  
+  guess = 1
+  if (stressed.proportion < 0.5){
+    guess = 0
+  }
+  random.guesses = data.frame(actual=(as.numeric(test$label) - 1))
+  random.guesses$estimates <- rep(guess,nrow(random.guesses))
+  random_selection_accuracies <- c(random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
+}
+```
+
 From the ROC curve in Figure 3, we achieved an AUC of approximately 0.96, which indicates that our model has a relatively high accuracy for predicting the response. 
 
 For the binned residuals vs predicted probabilities in Figure 4, we see that there appears to be a strong cubic curve. While this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the mean EDA, we see that beyond 9 $\mu S$, the residuals go to 0. This is likely due to the perfect separation we saw in our data exploration. Before this, the scatter appears to be random about the 0 line. Finally, the binned residuals against body temperature show that we are generally incurring false negatives on the extreme ends of body temperature and incurring false positives between 33$^\circ$C and 35$^\circ$C.
 
-After performing 10-fold cross validation, the average accuracy rate on the test sets was 0.894 with the worst accuracy rate being 0.889 and the best accuracy rate being 0.899. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was 0.641 with the worst accuracy rate being 0.634 and the best accuracy rate being 0.648.
+After performing 10-fold cross validation, the average accuracy rate on the test sets was `r round(mean(accuracies),3)` with the worst accuracy rate being `r round(min(accuracies),3)` and the best accuracy rate being `r round(max(accuracies),3)`. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was `r round(mean(random_selection_accuracies),3)` with the worst accuracy rate being `r round(min(random_selection_accuracies),3)` and the best accuracy rate being `r round(max(random_selection_accuracies),3)`.
 
 ```{r Generate Wrist Model, warning=F, echo=F}
 model.wrist.final <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
@@ -222,20 +257,52 @@ arm::binnedplot(x=model.wrist.final$.fitted,y=model.wrist.final$.resid,
                 cex.main=0.9, cex.lab=0.8)
 ```
 
+```{r Wrist Model CV, message=F, echo=F}
+wesad_random<-wesad[sample(nrow(wesad)),]
+folds <- cut(seq(1,nrow(wesad_random)), breaks=10, labels=FALSE)
+accuracies = c()
+random_selection_accuracies <- c()
+for(i in 1:10){
+  # Segement your data by fold using the which() function 
+  test.indices <- which(folds==i,arr.ind=TRUE)
+  test <- wesad_random[test.indices, ]
+  train <- wesad_random[-test.indices, ]
+  
+  # Fitting the linear model using train data
+  glm.fit <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = train, family = binomial)
+  
+  # Calculating accuracy using test data
+  glm.probs <- predict(glm.fit, test, type = "response")
+  glm.pred <- rep("Amused", nrow(test))
+  glm.pred[glm.probs > 0.5] <- "Stressed" # if prob > 0.5, predicted label = stressed
+  # ensure randomized predictions for each fold with runif function
+  
+  set.seed(i)
+  accuracies <- c(accuracies, (sum(diag(table(glm.pred, test$label)))/nrow(test)))
+  
+  stressed.proportion <- sum(as.numeric(test$label) - 1)/nrow(test)
+  
+  random.guesses = data.frame(actual=(as.numeric(test$label) - 1))
+  random.guesses$estimates <- runif(nrow(test),0,1)
+  random.guesses <- random.guesses %>% mutate(estimates = case_when(estimates < (1 - stressed.proportion) ~ 0, TRUE ~ 1))
+  random_selection_accuracies <- c(random_selection_accuracies, (1-sum(abs(random.guesses$estimates-random.guesses$actual))/nrow(test)))
+}
+```
+
 From the ROC curve in Figure 5, we achieved an AUC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
 
 For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
 
-After performing 10-fold cross validation on our final wrist-only model, the average accuracy rate on the test sets was: 0.852 with the worst accuracy rate being 0.843 and the best accuracy rate being 0.858. In contrast, if we had naively predicted the most frequent class in the test set, your mean accuracy rate was 0.54 with the worst accuracy rate being 0.53 and the best accuracy rate being 0.555.
+After performing 10-fold cross validation, the average accuracy rate on the test sets was `r round(mean(accuracies),3)` with the worst accuracy rate being `r round(min(accuracies),3)` and the best accuracy rate being `r round(max(accuracies),3)`. In contrast, if we had naively predicted the most frequent class in the test set, our mean accuracy rate was `r round(mean(random_selection_accuracies),3)` with the worst accuracy rate being `r round(min(random_selection_accuracies),3)` and the best accuracy rate being `r round(max(random_selection_accuracies),3)`.
 
 ## Subject Heterogeneity
 
 ```{r Model Diagnostics of Wrist Only Model, warning=F, include=F}
 final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, family = binomial)
-pander(final.model.interaction, caption="Wrist Model Output")
 ```
 
-We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperatures from the wristband. For example Subject 6 recorded higher skin temperatures during his stress condition while Subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that Subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
+We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. Please reference Table 10 in the Appendix for this model, which includes mean skin temperature and an interaction term with subject. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
+
 
 
 # Discussion
@@ -327,6 +394,10 @@ pander(model.wrist.05Hz, caption = "Wrist Model Output: 2 Minute Window, 30s Shi
 ```
 
 For the wrist model with a 1 minute window and 0.5 second shift, the estimates for the mean EDA and mean body temperature coefficients from the *Empatica E4* are nearly identical to our final model. However, for the rist model with a 2 minute window and 30 second shift, the estimates for the mean EDA were not within 2 standard errors, and this model did regard mean skin temperature as significant. This may be due to the window size and shift being too large to capture critical changes.
+
+```{r Wrist Temperature Model, warning=F, echo=F}
+pander(final.model.interaction, caption="Wrist Model Output")
+```
 
 ## Plots
 
