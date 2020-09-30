@@ -33,9 +33,6 @@ pkgTest("msm")
 pkgTest("plotROC")
 pkgTest("pROC")
 pkgTest("tidyr")
-pkgTest("sjPlot")
-pkgTest("sjmisc")
-pkgTest("sjlabelled")
 pkgTest("pander")
 ```
 
@@ -52,19 +49,14 @@ library(msm)
 library(plotROC)
 library(pROC)
 library(tidyr)
-library(sjPlot)
-library(sjmisc)
-library(sjlabelled)
 library(pander)
 knitr::opts_chunk$set(echo = FALSE,
                       message = FALSE,
                       warning = FALSE)
-ggplot2::theme_set(new = theme_bw())
 ```
 
 ```{r Load data, include=F}
 wesad <- read.csv("merged_wesad_data.csv")
-
 wesad <- wesad %>%
   mutate(label = as.factor(label),
          subject = as.factor(subject))
@@ -136,7 +128,7 @@ wesad$label <- as.factor(wesad$label)
 wesad <- within(wesad, subject <- relevel(subject, ref = "S2"))
 
 model.chest.final <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad, family = binomial)
-pander(model.chest.final, caption = "Table 1")
+pander(model.chest.final, caption = "Chest Model Output")
 ```
 
 $$
@@ -164,25 +156,22 @@ model.chest.final %>%
   kable(format="markdown")
 ```
 
-```{r  Chest Model Diagnostics ROC, echo=F, message=F, fig.height=3, fig.width=3, fig.align='center'}
-# ROC curve
+```{r  Chest Model Diagnostics ROC, fig.height=3, fig.width=3, fig.align='center', message=F, echo=F}
 ggplot(model.chest.final, aes(d = as.numeric(label), m = .fitted)) + 
   geom_roc(n.cuts = 0) + 
   geom_abline(intercept = 0) + labs(title="Chest Model: ROC Curve", x="False Positive Fraction", y="True Positive Fraction", caption="Figure 3") +
   theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 14))
 ```
 
-```{r  Chest Model Diagnostics Binned Residuals, echo=F, message=F, fig.height=4, fig.width=6, fig.align='center'}
-# Binned Residual Plots
+```{r  Chest Model Diagnostics Binned Residuals, fig.height=3, fig.width=6, fig.align='center', message=F, echo=F}
 arm::binnedplot(x=model.chest.final$.fitted,y=model.chest.final$.resid,
                 xlab="Predicted Probabilities", 
                 main = "Figure 4: Binned Residual vs. Predicted Probabilities")
-
 ```
 
 From the confusion matrix, we can see that we are slightly more likely to produce a false positive with this model, i.e. classifying someone as stressed when they are amused. This is likely due to the fact that we have about 1.8 times as many stress-condition samples than amuse-condition samples.
 
-From the ROC curve in Figure 3, we achieved an AOC of approximately 0.96, which indicates that our model has a relatively high accuracy for predicting the response. 
+From the ROC curve in Figure 3, we achieved an AUC of approximately 0.96, which indicates that our model has a relatively high accuracy for predicting the response. 
 
 For the binned residuals vs predicted probabilities in Figure 4, we see that there appears to be a strong cubic curve. While this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the mean EDA, we see that beyond 9 $\mu s$, the residuals go to 0. This is likely due to the perfect separation we saw in our data exploration. Before this, the scatter appears to be random about the 0 line. Finally, the binned residuals against body temperature show that we are generally incurring false negatives on the extreme ends of body temperature and incurring false positives between 33$^\circ$C and 35$^\circ$C.
 
@@ -224,7 +213,7 @@ ggplot(model.wrist.final, aes(d = as.numeric(label), m = .fitted)) +
   theme(plot.caption = element_text(hjust = 0.5, vjust = -0.5, size = 14))
 ```
 
-```{r  Wrist Model Diagnostics Binned Plot, echo=F, message=F, fig.height=4, fig.width=6, fig.align='center'}
+```{r  Wrist Model Diagnostics Binned Plot, echo=F, message=F, fig.height=3, fig.width=6, fig.align='center'}
 arm::binnedplot(x=model.wrist.final$.fitted,y=model.wrist.final$.resid,
                 xlab="Predicted Probabilities", 
                 main = "Figure 6: Binned Residual vs. Predicted Probabilities")
@@ -232,7 +221,7 @@ arm::binnedplot(x=model.wrist.final$.fitted,y=model.wrist.final$.resid,
 
 From the confusion matrix, we are again slightly more likely to produce a false positive with this model.
 
-From the ROC curve in Figure 5, we achieved an AOC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
+From the ROC curve in Figure 5, we achieved an AUCC of approximately 0.9273, which indicates that our model has a relatively high accuracy for predicting the response. 
 
 For the binned residuals vs predicted probabilities, we see that there appears to be another strong cubic curve. Again, while this may suggest that we should take our predictors to a higher power, we could find any literature to motivate such a decision among the predictors in this model. Instead, we believe there are external factors that these metrics could not capture in this model. Please reference the Appendix for the remaining binned residual plots. When examining the binned residuals against the standard deviation of the EDA, we see another strong curve along with significantly low residuals. The reason for this may be due to convergence issues that resulted from perfect separation for some of the subjects. Finally, the binned residuals against skin temperature show a generally random scatter, excluding a brief interval between 31$^\circ$C  and 32$^\circ$C. Additionally, we also have a few significantly large residuals towards 35$^\circ$C.
 
@@ -242,7 +231,7 @@ After performing 10-fold cross validation on our final wrist-only model, the ave
 
 ```{r Model Diagnostics of Wrist Only Model, warning=F, include=F}
 final.model.interaction <- glm(label ~ TEMP_EMP4_MEAN * subject, data = wesad, family = binomial)
-pander(final.model.interaction, caption="Table 3")
+pander(final.model.interaction, caption="Wrist Model Output")
 ```
 
 We noticed that some of the subjects' likelihood of being stressed had opposite relationships with respect to their recorded skin temperature from the wristband. For example subject 6 recorded higher skin temperatures during his stress condition while subject 4 recorded lower skin temperatures during his stress condition. In this summary output of our interaction model, you will note that subject's 6 positive interaction effect with temperature counteracts the main effect of temperature on the likelihood of stress. Specifically, for a 0.01 increase in degrees Celsius, we expect that the likelihood that subject 6 is stressed multiplies by a factor of 1.604. However for subject 4, we expect that for a 0.01 increase in degrees Celsisus, their likelihood of being stressed decreases by a factor of 0.525.
@@ -268,26 +257,7 @@ Several of the limitations in the analysis include our inability to cater to eac
 
 ## Tables
 
-```{r Data Dictionary, eval = TRUE, echo=F}
-collapse_rows_dt <- data.frame(Metric = c(rep("ECG (mV)", 2),
-                                          rep("EDA ($\\mu$s)", 3),
-                                          rep("EMG (mV)", 3),
-                                          rep("Temp (C$^\\circ$)", 3),
-                                          rep("Resp ($\\%$)", 2),
-                                          rep("BVP", 4),
-                                          rep("EDA ($\\mu$s)", 3),
-                                          rep("Temp (C$^\\circ$)", 3)))
-collapse_rows_dt2 <- data.frame(Description = c(rep("Electrocardiography: 700 Hz", 2),
-                                                         rep("Electrodermal Activity: 700 Hz", 3),
-                                                         rep("Electromyography: 700 Hz", 3),
-                                                         rep("Body Temperature: 700 Hz", 3),
-                                                         rep("Respiration: 700 Hz", 2),
-                                                         rep("Blood Volume Pulse: 64 Hz", 4),
-                                                         rep("Electrodermal Activity: 4 Hz", 3),
-                                                         rep("Skin Temperature: 4 Hz", 3)))
-nrow(collapse_rows_dt)
-nrow(collapse_rows_dt2)
-
+```{r Data Dictionary, echo=F}
 collapse_rows_dt <- data.frame(Metric = c(rep("ECG (mV)", 2), rep("EDA ($\\mu$s)", 3), rep("EMG (mV)", 3), rep("Temp (C$^\\circ$)", 3),
                                       rep("Resp ($\\%$)", 2), rep("BVP", 4), rep("EDA ($\\mu$s)", 3), rep("Temp (C$^\\circ$)", 3)),
                                Description = linebreak(c(rep("Electrocardiography: 700 Hz", 2), 
@@ -319,29 +289,6 @@ kable(collapse_rows_dt, escape=F, booktabs = T, align = "llcc", caption = "Data 
   group_rows(index = c("RespiBAN Chest Sensor" = 13, "Empatica E4 Wrist Sensor" = 10)) %>%
   column_spec(1, bold=T) %>%
   collapse_rows(columns = 1:3, latex_hline = "major", valign = "middle")
-
-# nrow(collapse_rows_dt)
-#                                # MSR = linebreak(c(rep("50 Hz", 2), 
-#                                #                           rep("4 Hz", 3), 
-#                                #                           rep("30 Hz", 3),
-#                                #                           rep("1 Hz", 3), 
-#                                #                           rep("10 Hz", 2), 
-#                                #                           rep("1 Hz (HR)", 4), 
-#                                #                           rep("4 Hz", 3), 
-#                                #                           rep("1 Hz", 3))),
-#                                # Features = linebreak(c("Mean", "Std Deviation", 
-#                                #                        "Mean" , "Std Deviation", "Max",
-#                                #                        "Mean", "Std Deviation",  "Median",
-#                                #                        "Mean", "Std Deviation", "Median", 
-#                                #                        "Mean",  "Std Deviation", 
-#                                #                        "Mean", "Std Deviation", "HR Mean", "HR Std Deviation",
-#                                #                        "Mean", "Std Deviation", "Max",
-#                                #                        "Mean", "Std Deviation", "Median")))
-# kable(collapse_rows_dt, escape=F, booktabs = T, align = "llcc", caption = "Data Dictionary") %>%
-#   kable_styling(latex_options = c("hold_position")) %>% 
-#   group_rows(index = c("RespiBAN Chest Sensor" = 13, "Empatica E4 Wrist Sensor" = 10)) %>%
-#   column_spec(1, bold=T) %>%
-#   collapse_rows(columns = 1:3, latex_hline = "major", valign = "middle")
 ```
 
 Note that while both sensors also included accelerometer data, it was not included in this analysis as it was only used to align the data points and distinguish the timestamps of the amusement and stress states. Other studies also have considered this variable and ultimately found it not to be useful, as you can read here [[9]][Bibliography].
@@ -378,27 +325,27 @@ ggplot(wesad) +
 
 ### Chest Binned Residual Plots
 
-```{r fig.width=6, fig.height=4, message=F, echo=F}
+```{r fig.width=6, fig.height=3, message=F, echo=F}
 arm::binnedplot(x=model.chest.final$EDA_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Electrodermal Activity", 
                 main = "Binned Residual vs. RespiBAN Electrodermal Activity")
-
 ```
 
-```{r fig.width=6, fig.height=4, message=F, echo=F}
+```{r fig.width=6, fig.height=3, message=F, echo=F}
 arm::binnedplot(x=model.chest.final$Temp_CHEST_MEAN,y=model.chest.final$.resid,
                 xlab="RespiBAN Body Temperature", 
                 main = "Binned Residual vs. RespiBANBody Temperature")
 ```
+
 ### Wrist Binned Residual Plots
 
-```{r fig.width=6, fig.height=4, message=F, echo=F}
+```{r fig.width=6, fig.height=3, message=F, echo=F}
 arm::binnedplot(x=model.wrist.final$EDA_EMP4_STDDEV,y=model.wrist.final$.resid,
                 xlab="Standard Deviation of Electrodermal Activity", 
                 main = "Binned Residual vs. EMP4 Electrodermal Activity")
 ```
 
-```{r fig.width=6, fig.height=4, message=F, echo=F}
+```{r fig.width=6, fig.height=3, message=F, echo=F}
 arm::binnedplot(x=model.wrist.final$TEMP_EMP4_MEAN,y=model.wrist.final$.resid,
                 xlab="Mean Skin Temperature", 
                 main = "Binned Residual vs. EMP4 Skin Temperature")
