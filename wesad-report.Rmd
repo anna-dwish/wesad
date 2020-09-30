@@ -197,7 +197,7 @@ Note that the $E4$ superscipt indicates that these measures came from the *Empat
 
 For every 0.1 $\mu s$ increase in standard deviation of the EDA from the *Empatica E4*, we expect that the odds that the subject is stressed multiplies by a factor of `r round(exp(3.106743),3)`. For every 0.01 degree Celsius increase in skin temperature, we predict that the likelihood the subject is stressed decreases by a factor of `r round(exp(0.06455 * 0.01),3)`. Again, we will not be interpreting the subject coefficients per the aforementioned reason.
 
-```{r  Wrist Model Diagnostics, echo=F, message=F, fig.height=5, fig.width=5}
+```{r  Wrist Model Diagnostics, echo=F, message=F, fig.height=6, fig.width=5}
 threshold <- 0.5
 model.wrist.final <- augment(model.wrist.final, type.predict = "response",type.residuals =  "pearson")
 
