@@ -83,19 +83,29 @@ ggplot(wesad) +
 ## Wrist & Chest Model
 
 ```{r Generate and Test Wrist and Chest Model, warning=F}
+summary(wesad$EDA_CHEST_MEAN)
+summary(wesad$EDA_EMP4_MEAN)
+summary(wesad$Temp_CHEST_MEAN)
+
+chan_bit=2^16
+vcc=3
+wesad$transformedEDACHEST <- wesad$EDA_CHEST_MEAN/chan_bit * vcc/0.12 * 1000000
+summary(wesad$transformedEDACHEST) 
+
 wesad$label <- as.factor(wesad$label)
-levels(wesad$label)[levels(wesad$label)=="Stressed"] <- 1
-levels(wesad$label)[levels(wesad$label)=="Amused"] <- 0
+# levels(wesad$label)[levels(wesad$label)=="Stressed"] <- 1
+# levels(wesad$label)[levels(wesad$label)=="Amused"] <- 0
 
 model.chest.final <- glm(label ~ EDA_CHEST_MEAN + Temp_CHEST_MEAN + subject, data = wesad, family = binomial)
+summary(model.chest.final)
 ```
 
 ```{r Chest and Wrist Model Diagnostics}
 threshold <- 0.5
 model.chest.final <- augment(model.chest.final, type.predict = "response")
-
+summary(wesad$label)
 model.chest.final %>%
-  mutate(stressed_predict = if_else(.fitted > threshold, 1, 0)) %>%
+  mutate(stressed_predict = if_else(.fitted > threshold, "Stressed", "Amused")) %>%
   group_by(label, stressed_predict) %>%
   summarise(n = n()) %>%
   spread(label, n) %>%
@@ -168,7 +178,7 @@ print(model_one_result)
 write(model_one_result,file=MODEL_RESULTS,append=TRUE)
 ```
 
-```{r Wrist Only Model, warning=F}
+```{r Wrist Only Model}
 model.wrist.final <- glm(label ~ EDA_EMP4_STDDEV + TEMP_EMP4_MEAN + subject, data = wesad, family = binomial)
 step.model.wrist.final <- stepAIC(model.wrist.final, direction = "forward", trace=FALSE)
 summary(step.model.wrist.final)
@@ -193,15 +203,15 @@ roc(final.model.wrist$label,final.model.wrist$.fitted)$auc
 
 arm::binnedplot(x=final.model.wrist$.fitted,y=final.model.wrist$.resid,
                 xlab="Predicted Probabilities", 
-                main = "Binned Residual vs. Predicted Probabilities")
+                main = "Binned Residual vs. Predicted Probabilities", col.int = FALSE)
 
 arm::binnedplot(x=final.model.wrist$EDA_EMP4_STDDEV,y=final.model.wrist$.resid,
                 xlab="Empatica E4 Electrodermal Activity Std Deviation",
-                main = "Binned Residual vs. Electrodermal Activity")
+                main = "Binned Residual vs. Electrodermal Activity", col.int = FALSE)
 
 arm::binnedplot(x=final.model.wrist$TEMP_EMP4_MEAN,y=final.model.wrist$.resid,
                 xlab="Empatica E4 Electrodermal Activity", 
-                main = "Binned Residual vs. EMP4 Skin Temperature")
+                main = "Binned Residual vs. EMP4 Skin Temperature", col.int = FALSE)
 ```
 
 ```{r Wrist Model CV and Accuracy, warning=F}
