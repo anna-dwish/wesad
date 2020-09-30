@@ -923,6 +923,45 @@ table(glm.pred, wesad$label)
 sum(diag(table(glm.pred, wesad$label)))/nrow(wesad) # accuracy
 ```
 
+# Messing Around with Models
+
+```{r}
+wesad <- read.csv("merged_wesad_data.csv")
+wesad <- wesad %>%
+  mutate(label = as.factor(label),
+         subject = as.factor(subject))
+names(wesad)
+```
+```{r fig.width=10, fig.width=5}
+ggplot(wesad) +
+  geom_point(aes(x=Temp_CHEST_MEAN, y =EDA_CHEST_MEAN, color = label))+
+  facet_wrap(~subject, nrow = 3, scales = "free")
+```
+
+
+```{r}
+lm1 <- glm(label ~ Temp_CHEST_MEAN + subject, data = wesad, family = "binomial")
+summary(lm1)
+
+glm.probs <- predict(lm1, wesad, type = "response")
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" # if prob > 0.5, predicted label = stressed
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad)
+
+lm2 <- glm(label ~ Temp_CHEST_MEAN * subject, data = wesad, family = "binomial")
+summary(lm2)
+glm.probs <- predict(lm2, wesad, type = "response")
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" # if prob > 0.5, predicted label = stressed
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad)
+
+lm3 <- glm(label ~ Temp_CHEST_MEAN + subject + EDA_CHEST_MEAN, data = wesad, family = "binomial")
+summary(lm3) # best model
+glm.probs <- predict(lm3, wesad, type = "response")
+glm.pred <- rep("amused", nrow(wesad))
+glm.pred[glm.probs > 0.5] <- "stressed" # if prob > 0.5, predicted label = stressed
+sum(diag(table(glm.pred, wesad$label)))/nrow(wesad)
+```
 
 
 

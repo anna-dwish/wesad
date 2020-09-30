@@ -159,7 +159,8 @@ roc(glm.fit$label,glm.fit$.fitted)$auc
 
 arm::binnedplot(x=glm.fit$.fitted,y=glm.fit$.resid,
                 xlab="Predicted Probabilities", 
-                main = "Binned Residual vs. Predicted Values")
+                main = "Binned Residual vs. Predicted Values",
+                col.int = FALSE)
 
 arm::binnedplot(x=glm.fit$EDA,y=glm.fit$.resid,
                 xlab="EDA", 
@@ -174,9 +175,5 @@ glm.fit %>%
   summarise(mean_resid = mean(.resid))
 ```
 
-# Messing around with model
-```{r}
-
-```
 
 
